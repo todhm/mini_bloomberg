@@ -1,0 +1,28 @@
+[
+    {
+        "ITEM_CODE": "AAAA1D",
+        "CYCLE": "MM",
+        "DATA_CNT": 467,
+        "END_TIME": "201811",
+        "GRP_CODE": "Group1",
+        "GRP_NAME": "항목선택",
+        "ITEM_NAME": "Lf(말잔)",
+        "P_ITEM_CODE": "",
+        "START_TIME": "196001",
+        "STAT_CODE": "010Y002",
+        "STAT_NAME": "1.1.주요 통화금융지표"
+    },
+    {
+        "ITEM_CODE": "AAAA1E",
+        "CYCLE": "MM",
+        "DATA_CNT": 395,
+        "END_TIME": "201811",
+        "GRP_CODE": "Group1",
+        "GRP_NAME": "항목선택",
+        "ITEM_NAME": "Lf(평잔)",
+        "P_ITEM_CODE": "",
+        "START_TIME": "196001",
+        "STAT_CODE": "010Y002",
+        "STAT_NAME": "1.1.주요 통화금융지표"
+    }
+]

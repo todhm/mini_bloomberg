@@ -1,0 +1,2 @@
+CREATE DATABASE fp_data;
+CREATE DATABASE fp_test_data;

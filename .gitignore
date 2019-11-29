@@ -1,0 +1,10 @@
+venv
+.DS_Store
+*.pyc
+node_modules
+__pycache__
+.secret.env
+*.ipynb
+note_practice
+.ipynb_checkpoints
+.pytest_cache

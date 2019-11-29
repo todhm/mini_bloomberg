@@ -1,0 +1,139 @@
+version: '3.7'
+services:
+  fp_redis:
+    container_name: fp_redis
+    image: redis:4.0.11
+    networks:
+      - message
+  fp_mongo:
+    container_name: fp_mongo
+    image: mongo:4.1.7-xenial
+    restart: always
+    ports:
+      - 27017:27017
+    volumes:
+      - mdb-data:/data/db
+    networks:
+      - backend
+
+
+  fp_postgres:
+    image: fidelkang/fp_postgres
+    build:
+      context: ./fp_postgres
+      dockerfile: Dockerfile
+    container_name: fp_postgres
+    env_file:
+      - ./envfiles/.airflow_development.env
+    networks:
+      - airflow_backend
+      - backend
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  fpcrawler:
+    image: fidelkang/fpcrawler
+    container_name: fpcrawler
+    build:
+      context: ./fpcrawler
+      dockerfile: Dockerfile
+    volumes:
+      - './fpcrawler:/usr/src/app'
+    command: python manage.py runserver 0.0.0.0:5000
+    ports:
+      - 5000:5000
+    env_file:
+      - ./envfiles/.base.env
+      - ./envfiles/.secret.env
+    depends_on:
+      - fp_redis
+      - fp_mongo
+      - fpcrawler_worker
+
+    networks:
+      - backend
+      - message
+      - logging
+  
+  fpcrawler_worker:
+    image: fidelkang/fpcrawler
+    build:
+      context: ./fpcrawler
+      dockerfile: Dockerfile
+    env_file:
+      - ./envfiles/.base.env
+      - ./envfiles/.secret.env
+    command: ["celery", "worker", "--app=worker.worker.app", "--concurrency=1","-Ofair", "--hostname=worker@%h", "--loglevel=INFO"]
+    volumes:
+      - './fpcrawler:/usr/src/app'
+    depends_on:
+      - fp_redis
+
+    networks:
+      - backend
+      - message
+      - logging
+
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    container_name: nginx
+    restart: always
+    ports:
+      - 80:80
+    depends_on:
+      - fpcrawler
+    networks:
+      - backend
+      - message
+    volumes:
+      - media:/usr/src/app/fp_app/media
+  fp_airflow:
+    image: puckel/docker-airflow:1.10.0-5
+    container_name: fp_airflow
+    restart: always
+    depends_on:
+      - fp_postgres
+    env_file:
+      - ./envfiles/.airflow_development.env
+    volumes:
+      - ./fp_airflow/dags:/usr/local/airflow/dags
+      - ./fp_airflow/requirements.txt:/requirements.txt
+    ports:
+        - "8080:8080"
+    command: webserver
+    networks:
+      - airflow_backend
+      - backend
+
+    healthcheck:
+        test: ["CMD-SHELL", "[ -f /usr/local/airflow/airflow-webserver.pid ]"]
+        interval: 30s
+        timeout: 30s
+        retries: 3
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:5.6.1
+    environment:
+      - xpack.security.enabled=false
+    networks:
+      - logging
+
+
+
+    
+volumes:
+  media:
+  mdb-data:
+  postgres-data:
+
+networks:
+  backend:
+  logging:
+  message:
+  airflow_backend:
+
+
+configs:
+  logstash.conf:
+    external: true
