@@ -1,5 +1,0 @@
-venv
-.DS_Store
-.dockerignore
-*.pyc
-__pycache__

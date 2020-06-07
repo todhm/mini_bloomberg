@@ -1,4 +1,3 @@
-from worker.tasks import app
 from core.models import Task 
 
 def launch_task(project_path,*args,**kwargs):

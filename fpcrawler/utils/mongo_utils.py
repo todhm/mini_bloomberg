@@ -1,6 +1,4 @@
 
-from pymongo import UpdateOne
-from pymongo.errors import BulkWriteError,InvalidDocument
 from fp_types.errors import BULK_DATA_FAILED,NO_DATA
 from fp_types.apitypes import BULK_DATA_WRITE
 

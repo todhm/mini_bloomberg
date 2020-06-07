@@ -7,8 +7,7 @@ from selenium.webdriver.support import expected_conditions as EC
 import requests
 import scrapy
 import scrapy.crawler as crawler
-from billiard.context import Process
-from billiard.queues import _SimpleQueue
+
 from twisted.internet import reactor
 from scrapy.utils.project import get_project_settings
 
@@ -29,36 +28,37 @@ from importlib import import_module
 #     cr = crawler.CrawlerProcess(get_project_settings())   #from Scrapy docs
 #     cr.crawl(spider,*args,**kwargs)     
 
-class ScrapyFailed(Exception):
-    def __init__(self, m):
-        self.message = m
-    def __str__(self):
-        return self.message
+# class ScrapyFailed(Exception):
+#     def __init__(self, m):
+#         self.message = m
+#     def __str__(self):
+#         return self.message
 
 
-def run_spider(spider,*args,**kwargs):
-    def f(q):
-        try:
-            runner = crawler.CrawlerRunner(get_project_settings())
-            deferred = runner.crawl(spider,*args,**kwargs)
-            deferred.addBoth(lambda _: reactor.stop())
-            reactor.run()
-            q.put(None)
-        except Exception as e:
-            q.put(e)
+# def run_spider(spider,*args,**kwargs):
+#     def f(q):
+#         try:
+#             runner = crawler.CrawlerRunner(get_project_settings())
+#             deferred = runner.crawl(spider,*args,**kwargs)
+#             deferred.addBoth(lambda _: reactor.stop())
+#             reactor.run()
+#             q.put(None)
+#         except Exception as e:
+#             q.put(e)
     
-    q = _SimpleQueue()
-    p = Process(target=f, args=(q,))
-    p.start()
-    result = q.get()
-    p.join()
-    if result is not None :
-        raise result
+#     q = _SimpleQueue()
+#     p = Process(target=f, args=(q,))
+#     p.start()
+#     result = q.get()
+#     p.join()
+#     if result is not None :
+#         raise result
 
 def get_crawl_soup(url):
     response = requests.get(url)
     soup = BeautifulSoup(response.text)
     return soup
+
 
 def getAllCompanyList(industList):
     chrome_options = webdriver.ChromeOptions()
@@ -81,6 +81,29 @@ def getAllCompanyList(industList):
             companyList = getCompanyNames(html_source, companyList, industry)
     return companyList
 
+
+def return_driver():
+    chrome_options = webdriver.ChromeOptions()
+    agent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/73.0.3683.86 Safari/537.36'
+    chrome_options.add_experimental_option(
+        "prefs",
+        {"profile.managed_default_content_settings.images": 2}
+    )
+    chrome_options.add_experimental_option(
+        'excludeSwitches', ['enable-automation']
+    )
+    chrome_options.add_argument("--headless")
+    chrome_options.add_argument("--disable-infobars")
+    chrome_options.add_argument("--incognito")
+    chrome_options.add_argument('--no-sandbox')
+    chrome_options.add_argument('--disable-dev-shm-usage')
+    chrome_options.add_argument(f'--user-agent={agent}')
+    capabilities = chrome_options.to_capabilities()
+    driver = webdriver.Chrome(
+        options=chrome_options,
+        desired_capabilities=capabilities
+    )
+    return driver
 
 
 def search_stats_code(code, keyword, find_key="STAT_NAME"):

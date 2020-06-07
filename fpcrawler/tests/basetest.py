@@ -1,16 +1,23 @@
 import unittest
-from pymongo import MongoClient
 import os 
 
 class BaseTest(unittest.TestCase):
 
     def setUp(self):
-        self.mongo_client = MongoClient(os.environ.get('MONGO_URI'))
-        self.db = self.mongo_client.testdb
-
+        pass
+        
 
 
     def tearDown(self):
-        self.mongo_client.drop_database('testdb')
-        self.mongo_client.close()
+        pass
+
+
+
+class DataChecker(base):
+
+    def check_report_data_works(self,report_data_list):
+        for data in report_data_list:
+            
+
+        self.assertTrue()
         

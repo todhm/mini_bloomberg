@@ -4,8 +4,6 @@ from utils.api_utils import return_async_get
 from fp_types import * 
 import asyncio
 import aiohttp
-from pymongo import UpdateOne
-from pymongo.errors import BulkWriteError
 import requests
 import json 
 import os 

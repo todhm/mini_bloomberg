@@ -8,3 +8,6 @@ __pycache__
 note_practice
 .ipynb_checkpoints
 .pytest_cache
+docker-compose-google.yml
+.vscode
+marcap

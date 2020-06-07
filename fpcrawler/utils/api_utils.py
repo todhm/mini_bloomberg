@@ -26,6 +26,7 @@ async def return_async_get(url):
                 return_data['result'] = "fail"
                 return_data['errorMessage'] = str(e)
             return return_data 
+            
 async def return_async_get_soup(url,proxy_object =None):
     return_data = {}
     #ip = 'https://194.126.183.141'
@@ -46,8 +47,7 @@ async def return_async_get_soup(url,proxy_object =None):
                     return soup
 
     except Exception as e:
-        print(e)
-        raise ReturnSoupError
+        raise ValueError(f"Error making async requests {url}" +str(e))
 
 
 def return_sync_get_soup(url,proxy_object =None):

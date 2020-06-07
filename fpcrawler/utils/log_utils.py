@@ -1,7 +1,5 @@
 import os 
 import logging 
-from log4mongo.handlers import BufferedMongoHandler,MongoHandler
-import logstash
 
 
 def log_factory(db_name):

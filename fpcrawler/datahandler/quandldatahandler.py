@@ -5,8 +5,6 @@ from fp_types import REQUEST_ERROR,BULK_DATA_FAILED,NO_DATA,NO_META_DATA,\
                      BULK_DATA_WRITE,QUANDL_META_DATA,QUANDL_STAT_DATA
 import asyncio
 import aiohttp
-from pymongo import UpdateOne
-from pymongo.errors import BulkWriteError
 import requests
 import json 
 import os 
