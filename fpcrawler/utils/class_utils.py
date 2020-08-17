@@ -3,8 +3,9 @@ import asyncio
 import functools
 import unittest
 import aiohttp
+from aiohttp import ClientSession, ClientTimeout, TCPConnector
 from utils.log_utils import log_factory
-from fp_types.errors import NO_DATA,REQUEST_ERROR
+from fp_types.errors import NO_DATA, REQUEST_ERROR
 from collections.abc import Iterable
 from application import create_app
 
@@ -43,21 +44,33 @@ class BaseTest(unittest.TestCase):
 class DataHandlerClass: 
 
 
-
-
     def _run(self,coro):
         return asyncio.get_event_loop().run_until_complete(coro)
 
-    
-
-
-
-    def return_async_func_results(self,method_name,data_list,callback_func="",callback_args=False,use_callback=True,*args,**kwargs):
+    def return_async_func_results(
+            self, 
+            method_name, 
+            data_list, 
+            callback_func="",
+            callback_args=False, 
+            use_callback=True, 
+            *args,
+            **kwargs
+    ):
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        async_list= []
+        timeout = 10
+        request_counts = 10
+        self.timeout = ClientTimeout(total=timeout)
+        self.conn = TCPConnector(limit=request_counts)
+        self.session = ClientSession(
+            connector=self.conn, 
+            loop=loop, 
+            timeout=self.timeout
+        )
+        async_list = []
         for data in data_list:
-            method = getattr(self,method_name)
+            method = getattr(self, method_name)
             is_single_args = isinstance(data,Iterable) and type(data) != str
             if is_single_args:
                 task = loop.create_task(method(**data,**kwargs))

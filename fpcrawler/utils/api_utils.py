@@ -9,14 +9,14 @@ user_agent='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_1) AppleWebKit/602.2.14
 headers = {'User-Agent': user_agent,'Accept':'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'}
 
 
-class ReturnSoupError(Exception):
+class ReturnSoupError(ValueError):
     pass
 
 
 async def return_async_get(url):
     return_data = {}
     async with aiohttp.ClientSession() as s:
-        async with s.get(url,headers=headers) as resp:
+        async with s.get(url, headers=headers) as resp:
             try:
                 result_string = await resp.text()
                 result_json = json.loads(result_string)
@@ -27,27 +27,30 @@ async def return_async_get(url):
                 return_data['errorMessage'] = str(e)
             return return_data 
             
-async def return_async_get_soup(url,proxy_object =None):
-    return_data = {}
-    #ip = 'https://194.126.183.141'
+            
+async def return_async_get_soup(url, proxy_object=None):
     try:
         async with aiohttp.ClientSession(trust_env=True) as s:
             if proxy_object:
                 proxy_ip = proxy_object['ip']
                 proxy_port = proxy_object['port']
-                http_proxy  = f"http://{proxy_ip}:{proxy_port}"
-                async with s.get(url,headers=headers,proxy=http_proxy) as resp:
+                http_proxy = f"http://{proxy_ip}:{proxy_port}"
+                async with s.get(
+                    url, 
+                    headers=headers, 
+                    proxy=http_proxy
+                ) as resp:
                     result_string = await resp.text()
                     soup = BeautifulSoup(result_string)
                     return soup
             else:
-                async with s.get(url,headers=headers) as resp:
+                async with s.get(url, headers=headers) as resp:
                     result_string = await resp.text()
-                    soup = BeautifulSoup(result_string,'html.parser')
+                    soup = BeautifulSoup(result_string, 'html.parser')
                     return soup
 
     except Exception as e:
-        raise ValueError(f"Error making async requests {url}" +str(e))
+        raise ValueError(f"Error making async requests {url}" + str(e))
 
 
 def return_sync_get_soup(url,proxy_object =None):
@@ -59,10 +62,10 @@ def return_sync_get_soup(url,proxy_object =None):
             proxies = {}
             proxies['http'] = proxy_url
             proxies['https'] = proxy_url
-            data = requests.get(url,headers=headers,proxies=proxies).text
+            data = requests.get(url, headers=headers, proxies=proxies).text
         else:
-            data = requests.get(url,headers=headers).text
-        soup = BeautifulSoup(data,'html.parser')
+            data = requests.get(url, headers=headers).text
+        soup = BeautifulSoup(data, 'html.parser')
     except Exception as e:
         raise ReturnSoupError
     return soup

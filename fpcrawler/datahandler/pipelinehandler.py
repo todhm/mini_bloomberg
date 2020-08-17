@@ -1,6 +1,5 @@
 import pandas as pd
 from pandasql import sqldf
-import FinanceDataReader as fdr
 from pandasql import sqldf
 import numpy as np
 from fp_types import (
@@ -49,16 +48,21 @@ def check_eq_offer_availiable(x, eq_df):
 
 def prepare_report_data(df, eq_df):
     df['reg_date'] = pd.to_datetime(df['reg_date'], infer_datetime_format=True)  
-    df = df.sort_values('reg_date', ascending=False)
-    df['report_year'] = df['reg_date'].apply(lambda x: x.year)
-    year_list = list(range(df.report_year.min(), df.report_year.max()))
-    df = df.set_index('report_year')
-    df = df.reindex(year_list)
+    df = df.sort_values('reg_date', ascending=True)
     df['future_reg_date'] = df['reg_date'].shift(-1)
     df['second_future_reg_date'] = df['reg_date'].shift(-2)
-    df['eq_offer'] = df['reg_date'].apply(
-        lambda x: check_eq_offer_availiable(x, eq_df)
-    )
+    df = df[
+        df['future_reg_date'].isna() | 
+        (df['future_reg_date'] - df['reg_date']).apply(lambda x:x.days < 365)
+    ]
+    df['report_year'] = df['reg_date'].apply(lambda x: x.year)
+    df = df.drop_duplicates(subset=['report_year'],keep='first')
+    if len(eq_df) >= 0:
+        df['eq_offer'] = df['reg_date'].apply(
+            lambda x: check_eq_offer_availiable(x, eq_df)
+        )
+    else:
+        df['eq_offer'] = 0
     df['last_year_assets'] = df['total_assets'].shift(1)
     df['two_year_before_assets'] = df['total_assets'].shift(2)
     df['last_year_longterm_debt'] = df['longterm_debt'].shift(1)
@@ -74,7 +78,7 @@ def prepare_report_data(df, eq_df):
 
 
 def create_f_score_data(joined_df):
-    joined_df['market_value'] = joined_df['Volume'] * joined_df['Close']
+    joined_df['market_value'] = joined_df['Marcap'] 
     joined_df['book_to_market'] = joined_df['book_value']\
         / joined_df['market_value']
     joined_df['log_book_to_market'] = (

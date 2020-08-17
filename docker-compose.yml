@@ -39,6 +39,7 @@ services:
     volumes:
       - './fpcrawler:/usr/src/app'
       - ./datacollections:/usr/src/app/datacollections
+      - ./fp_types:/usr/src/app/fp_types
     command:  python manage.py run -h 0.0.0.0 -p 5000
     ports:
       - 5000:5000
@@ -54,17 +55,44 @@ services:
       - message
       - logging
   
-  
+  connector:
+    image: fidelkang/connector
+    container_name: connector
+    build:
+      context: ./connector
+      dockerfile: Dockerfile
+    volumes:
+      - './connector:/usr/src/app'
+      - ./datacollections:/usr/src/app/datacollections
+      - ./marcap/data:/usr/src/app/datacollections/data
+      - ./fp_types:/usr/src/app/fp_types
+    command:  python manage.py run -h 0.0.0.0 -p 8000
+    ports:
+      - 8000:8000
+    env_file:
+      - ./envfiles/.base.env
+      - ./envfiles/.secret.env
+      - ./envfiles/.mongo_env.env
+    depends_on:
+      - fp_redis
+      - fp_mongo
+    networks:
+      - backend
+
   fp_airflow:
-    image: puckel/docker-airflow:1.10.0-5
+    image: airflow
     container_name: fp_airflow
+    build:
+      context: ./fp_airflow
     depends_on:
       - fp_postgres
     env_file:
       - ./envfiles/.airflow_development.env
     volumes:
-      - ./fp_airflow/dags:/usr/local/airflow/dags
+      - ./fp_airflow:/usr/local/airflow/dags
       - ./fp_airflow/requirements.txt:/requirements.txt
+      - ./datacollections:/usr/local/airflow/dags/datacollections
+      - ./fp_types:/usr/local/airflow/dags/fp_types
     ports:
         - "8080:8080"
     command: webserver

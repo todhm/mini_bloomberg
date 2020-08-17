@@ -94,9 +94,12 @@ def return_driver():
     )
     chrome_options.add_argument("--headless")
     chrome_options.add_argument("--disable-infobars")
+    chrome_options.add_argument("--disable-blink-features")
+    chrome_options.add_argument("--disable-blink-features=AutomationControlled")
     chrome_options.add_argument("--incognito")
     chrome_options.add_argument('--no-sandbox')
     chrome_options.add_argument('--disable-dev-shm-usage')
+    chrome_options.add_argument('window-size=1920x1080')
     chrome_options.add_argument(f'--user-agent={agent}')
     capabilities = chrome_options.to_capabilities()
     driver = webdriver.Chrome(

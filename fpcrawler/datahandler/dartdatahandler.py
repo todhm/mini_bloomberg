@@ -9,31 +9,30 @@ import lxml.html as LH
 import requests
 import asyncio
 import aiohttp
+from aiohttp import ClientSession, ClientTimeout, TCPConnector
 from bs4 import BeautifulSoup
 from scrapy.http import Request, HtmlResponse
-from utils import return_async_get_soup, \
-    exception_utils, headers
+from utils import exception_utils, headers
 from utils.class_utils import DataHandlerClass
 from utils.crawl_utils import return_driver
 import xlrd
 from fp_types import petovski_cash_dict, petovski_balancesheet_dict,\
     petovski_income_statement_dict, petovski_sub_income_dict, \
-    petovski_re_dict, none_minus_keys
+    petovski_re_dict, none_minus_keys, retypes
 from fp_types import YEARLY_REPORT, QUARTER_REPORT, \
     CONNECTED_FINANCIAL_STATEMENTS, NORMAL_FINANCIAL_STATEMENTS
+import fp_types
 
 
 logger = logging.getLogger()
 
 
-def find_value(text, unit, data_key="", **kwargs):
+def find_value(text, unit, data_key="", is_minus_data=False, **kwargs):
     is_none_minus = True if data_key and data_key in none_minus_keys else False
     re_data = re.search('(\<td.*\>)', text)
     if re_data:
         td_tag = re_data.group(1)
-        text = text.replace(td_tag, "")
-
-        
+        text = text.replace(td_tag, "")        
     final_text = text.replace(" ", "")\
         .replace("△", "-")\
         .replace("(-)", "-")\
@@ -53,27 +52,29 @@ def find_value(text, unit, data_key="", **kwargs):
     if not final_text:
         raise ValueError
     try:
-        if is_none_minus and float(final_text) < 0:
-            return float(final_text)*unit*-1
-        return float(final_text)*unit
+        float_value = float(final_text)
     except ValueError:
         if len(re.findall('\.', final_text)) >= 2:
-            if is_none_minus and float(final_text.replace('.', '')) < 0:
-                return float(final_text.replace('.', '')) * unit * -1
-            return float(final_text.replace('.', '')) * unit
-        raise ValueError
-
+            float_value = float(final_text.replace('.', ''))
+        else:
+            raise ValueError
+    if is_minus_data and float_value > 0:
+        return float_value * unit * -1
+    # if data_key in ['net_income', 'operational_income'] and :
+    if is_none_minus and float_value < 0:
+        return float_value * unit * -1
+    return float_value * unit
+    
 
 TABLE_CASE_FIRST = "TABLE_CASE_FIRST_MULTIPLE_TRS"
+TABLE_CASE_WITH_NOTE = "TABLE_CASE_WITH_NOTE"
 TABLE_CASE_SECOND = "TABLE_CASE_SECONDS_ONE_TRS"
 TABLE_CASE_THIRD = "TABLE_CASE_THIRD_TWO_TRS"
-BALANCE_RE = "재[ \s]*무[ \s]*상[ \s]*태[ \s]*표|대[ \s]*차[ \s]*대[ \s]*조[ \s]*표|재[ \s]*무[ \s]*상[ \s]*태[ \s]*표"
-INCOME_RE = "포[ \s]*괄[ \s]*손[ \s]*익[ \s]*계[ \s]*산[ \s]*서|손[ \s]*익[ \s]*계[ \s]*산[ \s]*서"
-CASHFLOW_RE = "현[ \s]*금[ \s]*흐[ \s]*름[ \s]*표"
 
 balance_data_re_list = [
-    petovski_balancesheet_dict['current_assets'],
-    petovski_balancesheet_dict['current_debt']
+    f"{petovski_balancesheet_dict['current_assets']}"
+    f"|{petovski_balancesheet_dict['total_assets']}",
+    petovski_balancesheet_dict['current_debt'],
 ]
 income_data_re_list = [
     petovski_income_statement_dict['operational_income'],
@@ -149,7 +150,7 @@ def return_stockcount_data(link, soup):
         )
         if total_count_row: 
             td_list = total_count_row.xpath('./td')
-            if len(td_list) == 2: 
+            if len(td_list) == 2:
                 td_text = td_list[1].xpath('./text()').extract()
                 data_value = find_value(td_text[0], 1)
                 return {
@@ -190,7 +191,28 @@ class DartDataHandler(DataHandlerClass):
             'User-Agent': user_agent,
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
         }
+        
 
+
+    async def return_async_get_soup(self, url, proxy_object=None):
+        try:
+            if proxy_object:
+                proxy_ip = proxy_object['ip']
+                proxy_port = proxy_object['port']
+                http_proxy = f"http://{proxy_ip}:{proxy_port}"
+                async with self.session.get(
+                    url, headers=headers, proxy=http_proxy
+                ) as resp:
+                    result_string = await resp.text()
+                    soup = BeautifulSoup(result_string)
+                    return soup
+            else:
+                async with self.session.get(url, headers=headers) as resp:
+                    result_string = await resp.text()
+                    soup = BeautifulSoup(result_string, 'html.parser')
+                    return soup
+        except Exception as e:
+            raise ValueError(f"Error making async requests {url}" + str(e))
 
 
     def parse_single_page_data(
@@ -200,7 +222,7 @@ class DartDataHandler(DataHandlerClass):
     ):
         url = 'http://dart.fss.or.kr/corp/searchExistAll.ax'
         today_string = dt.strftime(dt.now(),'%Y%m%d')
-        start_date = start_date if  start_date else '19990101'
+        start_date = start_date if start_date else '19980101'
         post_data = {
             'currentPage': currentPage,
             'maxResults': 1000,
@@ -218,12 +240,11 @@ class DartDataHandler(DataHandlerClass):
             'closingAccountsMonth': 'all',
             'reportName': report_type,
         }
-
         tpdata = {'textCrpNm': company_name}
         if textCrpCik:
             post_data['textCrpCik'] = textCrpCik
         else:
-            data = requests.post(url,data=tpdata,headers=self.headers)
+            data = requests.post(url, data=tpdata,headers=self.headers)
             if data.status_code == 200:
                 if data.text != 'null':
                     post_data['textCrpCik']  = data.text.strip()
@@ -256,7 +277,7 @@ class DartDataHandler(DataHandlerClass):
             data_object = {}
             data_object['code'] = str(code)
             data_object['link'] = link
-            data_object['reg_date'] = dt.strptime(date,"%Y-%m-%d")
+            data_object['reg_date'] = date
             data_object['corp_name'] = corp_name
             data_object['market_type'] = market
             data_object['title'] = title
@@ -285,7 +306,7 @@ class DartDataHandler(DataHandlerClass):
             data_object = {}
             data_object['code'] = str(code)
             data_object['link'] = link
-            data_object['reg_date'] = dt.strptime(date,"%Y-%m-%d")
+            data_object['reg_date'] = date
             data_object['corp_name'] = corp_name
             data_object['market_type'] = market
             data_object['title'] = title
@@ -381,22 +402,22 @@ class DartDataHandler(DataHandlerClass):
                 currentPage += 1
         return final_result
 
-    def parse_unit_string(self,tables,table_num):
-        unit = 100.0
+    def parse_unit_string(self,data):
+        unit = 1
         unit_find = 0
         re_unit1 = re.compile('단위[ \s]*:[ \s]*원')
         re_unit2 = re.compile('단위[ \s]*:[ \s]*백만원')
         re_unit3 = re.compile('단위[ \s]*:[ \s]*천원')
 
         # 원
-        if len(tables[table_num-1](string=re_unit1)) != 0:
+        if re_unit1.search(data):
             unit = 1
             unit_find = 1
         # 백만원
-        elif len(tables[table_num-1](string=re_unit2)) != 0:
+        elif re_unit2.search(data):
             unit = 1000000
             unit_find = 1
-        elif len(tables[table_num-1](string=re_unit3)) != 0:
+        elif re_unit3.match(data):
             unit = 1000
             unit_find = 1
         return unit
@@ -451,6 +472,49 @@ class DartDataHandler(DataHandlerClass):
           
 
     def parse_finance_table(self,re_data,scrapyResponse,re_data_list=[]):
+        check_unit_re = "단\s*위"        
+        # 단위정보 및 테이블명이 하나의 테이블에있고 다음테이블에 관련데이터가 있는경우
+        first_re_data = re_data_list[0]
+        first_style_balance_table_list = scrapyResponse.xpath(f"//table//*[re:match(text(), '{re_data}')]/ancestor::table/following-sibling::table[1]//*[re:match(text(), '{first_re_data}')]/ancestor::table")
+        if first_style_balance_table_list:
+            data_table = first_style_balance_table_list[0]
+            unit_table = data_table.xpath(f"./preceding-sibling::table[1]//*[re:match(text(),'{check_unit_re}')]")
+            if unit_table:
+                unit = self.parse_units(unit_table[0])
+                data_table = data_table.extract()
+                return data_table, unit
+
+        # 테이블재목의 ptag 다음으로 단위를 포함하고있는 ptag 다음으로 데이터를 포함하고 있는 table 이 같은 level위에 나타나는경우.
+        second_style_table_list = scrapyResponse.xpath(f"//p[re:match(text(), '{re_data}')]/following-sibling::p[1]/following-sibling::table[1]//*[re:match(text(), '{first_re_data}')]/ancestor::table/preceding-sibling::p[1]")
+        if second_style_table_list:
+            if re.search(check_unit_re,second_style_table_list[0].extract()):
+                unit = self.parse_units(second_style_table_list[0])
+                data_table = second_style_table_list[0].xpath(f"./following-sibling::table[1]//*[re:match(text(), '{first_re_data}')]/ancestor::table")
+                data_table = data_table[0].extract()
+                return data_table, unit
+
+        # 테이블 재목과 단위를 동시에 포함하는 ptag 데이터를 포함하고 있는 table 이 같은 level위에 나타나는경우.
+        third_style_table_list = scrapyResponse.xpath(f"//p[re:match(text(), '{re_data}')]/following-sibling::table[1]//*[re:match(text(), '{first_re_data}')]/ancestor::table")
+        if third_style_table_list:
+            table = third_style_table_list[0]
+            unit_p_tag = table.xpath('./preceding-sibling::p[1]')
+            if unit_p_tag and re.search(check_unit_re, unit_p_tag[0].extract()):
+                unit = self.parse_units(unit_p_tag[0])
+                data_table = table.extract()
+                return data_table, unit
+
+        # 테이블 재목을 포함하는 ptag 단위를 표현하는 table 데이터를 포함하고 있는 table 이 같은 level위에 나타나는경우.
+        fourth_style_table_list = scrapyResponse.xpath(
+            f"//p[re:match(., '{re_data}')]/following-sibling::table[1]//*[re:match(.,'단[\s]*위')]/ancestor::table/following-sibling::table[1]//*[re:match(text(), '{first_re_data}')]"
+        )
+        if fourth_style_table_list:
+            table = fourth_style_table_list[0]
+            unit_p_tag = table.xpath('./preceding-sibling::table[1]')
+            if unit_p_tag and re.search(check_unit_re, unit_p_tag[0].extract()):
+                unit = self.parse_units(unit_p_tag[0])
+                data_table = table.extract()
+                return data_table, unit
+
         first_style_balance_table_list = scrapyResponse.xpath(f"//table//p[re:match(text(), '{re_data}')]/ancestor::table/following-sibling::table | //table//p[re:match(text(), '{re_data}')]/ancestor::table")
         if len(first_style_balance_table_list)>=2:
             unit = self.parse_units(first_style_balance_table_list[0])
@@ -458,6 +522,14 @@ class DartDataHandler(DataHandlerClass):
             return balancesheet_table,unit
         else:
             first_style_balance_table_list = scrapyResponse.xpath(f"//p[re:match(text(), '{re_data}')]/following-sibling::table")
+            if len(first_style_balance_table_list) == 1:
+                unit_p_tag = scrapyResponse.xpath(f"//p[re:match(text(), '{re_data}')]")
+                try:
+                    unit = self.parse_units(unit_p_tag[0])
+                    table_data = first_style_balance_table_list[0].extract()
+                    return table_data, unit
+                except Exception: 
+                    pass
             if len(first_style_balance_table_list) >=2:
                 try:
                     unit_table = first_style_balance_table_list[0]
@@ -466,7 +538,6 @@ class DartDataHandler(DataHandlerClass):
                     return balancesheet_table,unit
                 except Exception as e:
                     pass
-                
             data_regex_and_cond_list = [ f".//td[re:match(text(),'{reg_data}')] or .//p[re:match(text(),'{reg_data}')]" for reg_data in re_data_list]
             reg_data = ' and '.join(data_regex_and_cond_list)  
             data_table_xpath = f'//table[{reg_data}]'
@@ -496,20 +567,33 @@ class DartDataHandler(DataHandlerClass):
                 unit = self.parse_units(unit_table[0])
                 balancesheet_table = data_table[0].extract()
                 return balancesheet_table,unit
-        raise ValueError
+        raise ValueError("No table")
 
 
-    def return_financial_report_table(self,link,soup):
+    def return_financial_report_table(self,link,soup, is_connected_inside_normal=False):
         return_data = {}
         request = Request(url=link)
         scrapyResponse = HtmlResponse(url=link, request=request, body=str(soup),encoding='utf-8')        
         extra_re = "요[ \s]*약.*재[ \s]*무[ \s]*정[\s]*보"
         all_table_list = scrapyResponse.xpath("//table")
+        if is_connected_inside_normal:
+            balance_re = fp_types.CONNECTED_BALANCE_RE
+            cashflow_re = fp_types.CONNECTED_CASHFLOW_RE
+            income_re = fp_types.CONNECTED_INCOME_RE
+        else:
+            balance_re = fp_types.BALANCE_RE
+            cashflow_re = fp_types.CASHFLOW_RE
+            income_re = fp_types.INCOME_RE
+
         if len(all_table_list) <2:
             raise exception_utils.NotableError
         unit_regex=re.compile("(\d+(,\d+)*)원")
         try:
-            balancesheet_table,unit = self.parse_finance_table(BALANCE_RE,scrapyResponse,balance_data_re_list)
+            balancesheet_table,unit = self.parse_finance_table(
+                balance_re,
+                scrapyResponse,
+                balance_data_re_list
+            )
             table_style = self.parse_table_style_case(balancesheet_table)
             return_data['balance_sheet'] = {}
             return_data['balance_sheet']['table'] = balancesheet_table
@@ -528,7 +612,11 @@ class DartDataHandler(DataHandlerClass):
 
 
         try:
-            income_table,unit = self.parse_finance_table(INCOME_RE,scrapyResponse,income_data_re_list)
+            income_table,unit = self.parse_finance_table(
+                income_re,
+                scrapyResponse,
+                income_data_re_list
+            )
             table_style = self.parse_table_style_case(income_table)
             return_data['income_statement'] = {}
             return_data['income_statement']['table'] = income_table
@@ -543,7 +631,11 @@ class DartDataHandler(DataHandlerClass):
             raise exception_utils.NotableError
 
         try:
-            cashflow_table,unit = self.parse_finance_table(CASHFLOW_RE,scrapyResponse,cashflow_data_re_list)
+            cashflow_table,unit = self.parse_finance_table(
+                cashflow_re,
+                scrapyResponse,
+                cashflow_data_re_list
+            )
             table_style = self.parse_table_style_case(cashflow_table)
             return_data['cashflow'] ={}
             return_data['cashflow']['table'] = cashflow_table
@@ -562,22 +654,97 @@ class DartDataHandler(DataHandlerClass):
             pass
         return return_data
 
-    def parse_row_data_with_re(self,root,key,unit,is_ascending=True,data_key=""):
+    def parse_row_data_with_re(self,root,key,unit,is_ascending=True,data_key="", style=None):
+        is_minus_data = False
+        if data_key in ['net_income', 'operational_income']:
+            xpath_expression = f"//tr//*[re:match(text(),'{key}')]/text()"
+            xpath_result = root.xpath(xpath_expression, namespaces={'re': 'http://exslt.org/regular-expressions'})
+            if xpath_result:
+                row_text = xpath_result[0]
+                if re.search('손[\s]*실', row_text) and not re.search('이[\s]*익', row_text):
+                    is_minus_data = True
+
+        odd_style_result = root.xpath(
+            (
+                f"//thead/tr[1]/td[4]/../../tr[1]/td[3]/../../..//*[re:match(text(),'{key}')]/ancestor::tr"
+                f"|//thead/tr[1]/th[4]/../../..//tbody/tr[1]/td[7]/../..//*[re:match(text(),'{key}')]/ancestor::tr"
+            ), 
+            namespaces={'re': 'http://exslt.org/regular-expressions'}
+        )
+        if odd_style_result:
+            td_results = odd_style_result[0].xpath('.//td')
+            if len(td_results) == 7:
+                if is_ascending:
+                    start_number = 1
+                    end_number = 3
+                else:
+                    start_number = 5
+                    end_number = 7
+                for idx,td in enumerate(td_results[start_number:end_number]):
+                    number_string = td.text_content().encode().decode()
+                    try:
+                        value = find_value(number_string,unit,data_key=data_key, is_minus_data=is_minus_data)
+                        return value 
+                    except Exception:
+                        pass
+
         result = root.xpath(f"//tr//*[re:match(text(),'{key}')]/ancestor::tr", namespaces={'re': 'http://exslt.org/regular-expressions'})
         if result:
             td_results = result[0].xpath('.//td')
             values_td = td_results[1:] if is_ascending else td_results[:0:-1]
-            for td in values_td:
+            for idx,td in enumerate(values_td):
+                if idx == 0 and style == TABLE_CASE_WITH_NOTE:
+                    continue
                 number_string = td.text_content().encode().decode()
                 try:
-                    value = find_value(number_string,unit,data_key=data_key)
+                    value = find_value(number_string,unit,data_key=data_key, is_minus_data=is_minus_data)
                     return value 
                 except Exception as e:
                     pass
         raise ValueError(f"No data cannot find {key}")
 
+    def parse_last_year_row(self,root,key,unit,is_ascending=True,data_key="", style=None):
+        is_minus_data = False
+        if data_key in ['net_income', 'operational_income']:
+            xpath_expression = f"//tr//*[re:match(text(),'{key}')]/text()"
+            xpath_result = root.xpath(xpath_expression, namespaces={'re': 'http://exslt.org/regular-expressions'})
+            row_text = xpath_result[0]
+            if re.search('손[\s]*실', row_text) and not re.search('이[\s]*익', row_text):
+                is_minus_data = True
+        odd_style_result = root.xpath(f".//thead/tr[1]/th[4]/../../tr[1]/th[3]/../../..//*[re:match(text(),'{key}')]/ancestor::tr", namespaces={'re': 'http://exslt.org/regular-expressions'})
+        if odd_style_result:
+            td_results = odd_style_result[0].xpath('.//td')
+            if len(td_results) == 7:
+                for idx,td in enumerate(td_results[3:5]):
+                    number_string = td.text_content().encode().decode()
+                    try:
+                        value = find_value(number_string,unit,data_key=data_key, is_minus_data=is_minus_data)
+                        return value 
+                    except Exception as e:
+                        pass
+        result = root.xpath(f"//tr//*[re:match(text(),'{key}')]/ancestor::tr", namespaces={'re': 'http://exslt.org/regular-expressions'})
+        if result:
+            td_results = result[0].xpath('.//td')
+            values_td = td_results[2:] if is_ascending else td_results[-2:0:-1]
+            for idx,td in enumerate(values_td):
+                if idx == 0 and style == TABLE_CASE_WITH_NOTE:
+                    continue
+                number_string = td.text_content().encode().decode()
+                try:
+                    value = find_value(number_string,unit,data_key=data_key, is_minus_data=is_minus_data)
+                    return value 
+                except Exception as e:
+                    pass
+        raise ValueError(f"No data cannot find {key}")
     def parse_table_style_case(self, root):
         root = LH.fromstring(root)
+        # 데이터에 주석이 있는지 확인하기
+        note_re = '주[\s]*석'
+
+        seconds_head_rows = root.xpath(f".//thead/tr/th[2]/text()")
+        if seconds_head_rows:
+            if re.match(note_re,seconds_head_rows[0]):
+                return TABLE_CASE_WITH_NOTE
         all_rows = root.xpath('.//tbody//tr')
         if len(all_rows) >3 and len(all_rows[0].getchildren())>=2:
             return TABLE_CASE_FIRST
@@ -592,14 +759,15 @@ class DartDataHandler(DataHandlerClass):
         final_data_dict = {}
         #header를 parsing해서 가장 최근 데이터만 가져옴
         all_rows = root.xpath('.//tbody//tr')
-        if style==TABLE_CASE_FIRST:
+        
+        if style==TABLE_CASE_FIRST or style==TABLE_CASE_WITH_NOTE:
             header_list = root.xpath('.//thead//th')
             header_list = header_list[1:]
             ascending = self.check_is_ascending(header_list)
             for key in data_dict:
                 try:
                     if not final_data_dict.get(key):
-                        value = self.parse_row_data_with_re(root,data_dict[key],unit,ascending,data_key=key)
+                        value = self.parse_row_data_with_re(root,data_dict[key],unit,ascending,data_key=key, style=style)
                         final_data_dict[key] = value
                 except ValueError:
                     continue
@@ -607,7 +775,7 @@ class DartDataHandler(DataHandlerClass):
             for row in all_rows:
                 td_list = row.xpath('.//td')
                 if len(td_list) >= 2:
-                    td_key = td_list[0].text_content().strip()
+                    td_key = td_list[0].text_content().strip().replace('.', '')
                     number_string = td_list[1].text_content().strip() if ascending else td_list[-1].text_content().strip()
                     try:
                         if not final_data_dict.get(td_key):
@@ -627,17 +795,51 @@ class DartDataHandler(DataHandlerClass):
         remained_keys = self.return_remained_petovski_data(result,data_dict)
         for key in remained_keys:
             try:
-                
                 value = self.parse_row_data_with_re(root,data_dict[key],unit,data_key=key)
                 result[key] = value
             except:
                 pass
         return result 
 
+    def fillin_insufficient_balance_data(self, balance_data_result):
+        if balance_data_result.get("book_value") is None:
+            if balance_data_result.get("total_assets") and balance_data_result.get("total_debt"):
+                balance_data_result['book_value'] = balance_data_result['total_assets'] - balance_data_result['total_debt']
+        if balance_data_result.get('current_debt') is None:
+            if balance_data_result.get("total_debt") and balance_data_result.get("longterm_debt"):
+                balance_data_result['current_debt'] = balance_data_result['total_debt'] - balance_data_result['longterm_debt']
+        return balance_data_result
+            
+
+
+        pass
+        # if remained_keys.get("total_assets"):
+        #     pass
         
     def parse_balancesheet_table(self,table,unit,table_style):
         root = LH.fromstring(table)
         result = self.parse_table_data(root,unit,petovski_balancesheet_dict,style=table_style)
+
+        if not result.get("current_assets"):
+            current_assets = 0
+            current_debt = 0 
+            total_assets = result.get("total_assets") 
+            total_debt = result.get("total_debt") 
+            for key in result:
+                if re.search(retypes.total_debt_re_key, key):
+                    total_debt = result[key]
+                for cd_key in retypes.current_debt_res:
+                    if re.search(retypes.current_debt_res[cd_key], key):
+                        current_debt += result[key]
+                        break 
+
+                for ca_key in retypes.current_assets_res:
+                    if re.search(retypes.current_assets_res[ca_key], key):
+                        current_assets += result[key]
+                        break 
+            result['current_assets'] = current_assets
+            result['current_debt'] = current_debt if not result.get('current_debt') else result.get('current_debt')
+            result['longterm_debt'] = total_debt - result['current_debt']
         return result 
 
     def parse_cashflow_table(self,table,unit,table_style):
@@ -651,6 +853,9 @@ class DartDataHandler(DataHandlerClass):
         result = self.parse_table_data(root,unit,petovski_income_statement_dict,style=table_style)
         if result.get("sales") is not None and result['sales'] ==0:
             result.pop('sales')
+        # 은행업의 경우 매출이 나타나잊지 않으므로 operational_income을 sales대용으로활용
+        if not result.get('sales'):
+            result['sales'] = result['operational_income']
         if 'extra_ordinary_profit' not in result:
             result['extra_ordinary_profit'] = 0 
         if 'gross_profit' not in result:
@@ -660,26 +865,26 @@ class DartDataHandler(DataHandlerClass):
                 for key in original_dict:
                     if re.search(petovski_sub_income_dict['cost_of_goods_sold'],key):
                         cogs = original_dict[key]
-                        result['gross_profit'] = sales - cogs
-                    
-                
-
+                        result['gross_profit'] = sales - cogs        
         if  'extra_ordinary_loss' not in result:
             result['extra_ordinary_loss'] = 0
         if 'operational_income' not in result:
             try:
-                operational_sales = self.parse_row_data_with_re(root,petovski_sub_income_dict['operational_sales'],unit,data_key='operational_sales')
-                operational_costs = self.parse_row_data_with_re(root,petovski_sub_income_dict['operational_costs'],unit,data_key='operational_sales')
+                operational_sales = self.parse_row_data_with_re(root,petovski_sub_income_dict['operational_sales'],unit,data_key='operational_sales',style=table_style)
+                operational_costs = self.parse_row_data_with_re(root,petovski_sub_income_dict['operational_costs'],unit,data_key='operational_sales',style=table_style)
                 result['operational_income'] = operational_sales - operational_costs
             except ValueError:
                 pass
+        #매출 총이익이 없을 경우 영업이익으로 이를 대체
+        if 'gross_profit' not in result:
+            result['gross_profit'] = result['operational_income']
         return result 
 
 
     
-    def parse_report_link(self,link,soup):
+    def parse_report_link(self,link,soup,is_connected_inside_normal=False):
         try:
-            table_dict = self.return_financial_report_table(link,soup)
+            table_dict = self.return_financial_report_table(link,soup,is_connected_inside_normal=is_connected_inside_normal)
         except exception_utils.NotableError:
             raise exception_utils.ExpectedError 
         except Exception as e:
@@ -687,7 +892,9 @@ class DartDataHandler(DataHandlerClass):
             raise ValueError
 
         result = {}
-        if table_dict.get('cashflow') and table_dict['cashflow']['style'] == TABLE_CASE_FIRST:
+        if table_dict.get('cashflow') and table_dict['cashflow']['style'] in [
+            TABLE_CASE_FIRST, TABLE_CASE_WITH_NOTE
+        ]:
             try:
                 cashflow_result = self.parse_cashflow_table(
                     table_dict['cashflow']['table'],
@@ -702,7 +909,9 @@ class DartDataHandler(DataHandlerClass):
             cashflow_result = {}
         
         try:
-            if table_dict.get('income_statement') and table_dict['income_statement']['style'] == TABLE_CASE_FIRST:
+            if table_dict.get('income_statement') and table_dict['income_statement']['style'] in [
+                TABLE_CASE_FIRST, TABLE_CASE_WITH_NOTE
+            ]:
                 incomestatement_result = self.parse_incomestatement_table(
                     table_dict['income_statement']['table'], 
                     table_dict['income_statement']['unit'],
@@ -714,7 +923,10 @@ class DartDataHandler(DataHandlerClass):
             logger.error(f"Unexpected income statement table {link}")
             raise exception_utils.ExpectedError
         try:
-            if table_dict.get('balance_sheet') and table_dict['balance_sheet']['style'] == TABLE_CASE_FIRST:
+            if table_dict.get('balance_sheet') and table_dict['balance_sheet']['style'] in [
+                TABLE_CASE_FIRST, TABLE_CASE_WITH_NOTE
+            ]:
+
                 balachesheet_result = self.parse_balancesheet_table(
                     table_dict['balance_sheet']['table'],
                     table_dict['balance_sheet']['unit'],
@@ -726,7 +938,9 @@ class DartDataHandler(DataHandlerClass):
             logger.error(f"Unexpected balancesheet table {link}")
             raise exception_utils.ExpectedError
 
-        if table_dict.get('summary') and  table_dict['summary']['style'] == TABLE_CASE_FIRST:
+        if table_dict.get('summary') and table_dict['summary']['style'] in [
+                TABLE_CASE_FIRST, TABLE_CASE_WITH_NOTE
+            ]:
             root = LH.fromstring(table_dict['summary']['table'])
             unit = table_dict['summary']['unit']
             balachesheet_result = self.fill_insufficient_petovski_data(balachesheet_result,petovski_balancesheet_dict,root,unit)
@@ -744,7 +958,32 @@ class DartDataHandler(DataHandlerClass):
                 operational_income = incomestatement_result['operational_income']
                 depreciation_cost = self.parse_row_data_with_re(root,petovski_sub_income_dict['depreciation_cost'],table_dict['income_statement']['unit'])
                 tax_costs = self.parse_row_data_with_re(root,petovski_sub_income_dict['corporate_tax_cost'],table_dict['income_statement']['unit'])
-                cashflow_result['cashflow_from_operation'] = operational_income + depreciation_cost - tax_costs
+                try:
+                    current_assets = balachesheet_result.get('current_assets')
+                    current_debt = balachesheet_result.get('current_debt')
+                    current_working_capital = current_assets - current_debt
+                    balance_elem = LH.fromstring(table_dict['balance_sheet']['table'])
+                    last_year_ca = self.parse_last_year_row(
+                        balance_elem,
+                        petovski_balancesheet_dict['current_assets'],
+                        table_dict['balance_sheet']['unit'],
+                        data_key='current_assets'
+                    )
+                    last_year_cb = self.parse_last_year_row(
+                        balance_elem,
+                        petovski_balancesheet_dict['current_debt'],
+                        table_dict['balance_sheet']['unit'],
+                        data_key='current_debt'
+                    )
+                    cashflow_result['last_year_current_assets'] = last_year_ca
+                    cashflow_result['last_year_current_debt'] = last_year_cb
+                    last_year_working_capital = last_year_ca - last_year_cb
+                    working_capital_change = current_working_capital - last_year_working_capital
+                except Exception as e:
+                    print(e)
+                    working_capital_change = 0
+                cashflow_result['cashflow_from_operation'] = operational_income + depreciation_cost - tax_costs + working_capital_change
+                cashflow_result['direct_cashflow'] = False
             except Exception as e:
                 logger.error(f"Error occur while parsing no cashtable data {link}" + str(e))
                 raise exception_utils.ExpectedError
@@ -760,23 +999,23 @@ class DartDataHandler(DataHandlerClass):
             or table_dict['income_statement']['style'] in [TABLE_CASE_SECOND,TABLE_CASE_THIRD]:
                 driver_result = self.return_driver_report_data(link,table_dict,result)
                 result.update(driver_result)
-
+        result = self.fillin_insufficient_balance_data(result)
         cash_remained_keys = self.return_remained_petovski_data(result,petovski_cash_dict)
         balancesheet_remained_keys = self.return_remained_petovski_data(result,petovski_balancesheet_dict)
         incomestatement_remained_keys = self.return_remained_petovski_data(result,petovski_income_statement_dict)
+
         if cash_remained_keys:
-            logger.error(f"Not Sufficient cashflow with url {link}")
+            logger.error(f"Not Sufficient cashflow with url {link} {cash_remained_keys}")
             raise exception_utils.ExpectedError
         if balancesheet_remained_keys:
-            logger.error(f"Not Sufficient balancesheet with url {link}")
+            logger.error(f"Not Sufficient balancesheet with url {link} {balancesheet_remained_keys}")
             raise exception_utils.ExpectedError
         if incomestatement_remained_keys:
             logger.error(f"Not Sufficient income statements with url {link} {incomestatement_remained_keys}",)
             raise exception_utils.ExpectedError
-
         return result
 
-    def return_multiple_link_results(self,link_list,jump=5):
+    def return_multiple_link_results(self,link_list,jump=100):
         success_list = []
         failed_list = []
         for i in range(0,len(link_list),jump):
@@ -799,7 +1038,7 @@ class DartDataHandler(DataHandlerClass):
         rcpNo = search_download_link.group(1)
         downloadNo = search_download_link.group(2)
         download_link =f'http://dart.fss.or.kr/pdf/download/main.do?rcp_no={rcpNo}&dcm_no={downloadNo}'
-        download_soup = await return_async_get_soup(download_link)
+        download_soup = await self.return_async_get_soup(download_link)
         statements_tag = download_soup.find('td',text=re.compile("재무제표"))
         if not statements_tag:
             raise exception_utils.NoDataError
@@ -809,9 +1048,9 @@ class DartDataHandler(DataHandlerClass):
 
     def parse_excel_file_table(self,sheet_name_list):
         table_re_list = {
-            'balance_sheet':BALANCE_RE,
-            'income_statement':INCOME_RE,
-            'cashflow':CASHFLOW_RE
+            'balance_sheet':fp_types.BALANCE_RE,
+            'income_statement':fp_types.INCOME_RE,
+            'cashflow':fp_types.CASHFLOW_RE
         }
         data = {}
         for idx,sheet_name in enumerate(sheet_name_list):
@@ -820,11 +1059,12 @@ class DartDataHandler(DataHandlerClass):
                     is_connected = '연결' in sheet_name
                     table_key = table_name + '_connected' if is_connected else table_name
                     data[table_key] = idx
+
         if not data.get('income_statement'):
             for idx,sheet_name in enumerate(sheet_name_list):
                 if re.search(table_re_list['income_statement'],sheet_name):
                     is_connected = '연결' in sheet_name
-                    table_key = table_name + '_connected' if is_connected else table_name
+                    table_key = 'income_statement' + '_connected' if is_connected else table_name
                     data[table_key] = idx
         return data
 
@@ -861,6 +1101,14 @@ class DartDataHandler(DataHandlerClass):
                         result['operational_income'] = operational_sales - operational_costs
             except ValueError:
                 pass
+        if 'gross_profit' not in result:
+            if result.get('sales'):
+                sales = result['sales']
+                original_dict = copy.deepcopy(result)
+                for key in original_dict:
+                    if re.search(petovski_sub_income_dict['cost_of_goods_sold'],key):
+                        cogs = original_dict[key]
+                        result['gross_profit'] = sales - cogs
         return result 
 
 
@@ -878,7 +1126,8 @@ class DartDataHandler(DataHandlerClass):
                         is_pitovski_data = True
                         break
                 if  not is_pitovski_data:
-                    data[row[0]] = row[1]
+                    row_key = row[0].strip().replace('.', '')
+                    data[row_key] = row[1]
         return data
 
     def parse_sheet_unit(self,sheet):
@@ -962,18 +1211,17 @@ class DartDataHandler(DataHandlerClass):
             raise exception_utils.ExpectedError
         random_file_name =''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(10)) + '.xls'
         report_link = kwargs.get("report_link",'')
-        async with aiohttp.ClientSession() as s:
-            async with s.get(link,headers=headers,allow_redirects=True) as resp:
-                if resp.status != 200:
-                    logger.error(f"Request Error on {report_link} {link}")
+        async with self.session.get(link,headers=headers,allow_redirects=True) as resp:
+            if resp.status != 200:
+                logger.error(f"Request Error on {report_link} {link}")
+                raise exception_utils.ExpectedError
+            with  open(random_file_name, 'wb') as f:
+                try:
+                    content = await resp.read()
+                    f.write(content)
+                except Exception as e:
+                    logger.error(f"Error saving error on {report_link} {link} {str(e)}")
                     raise exception_utils.ExpectedError
-                with  open(random_file_name, 'wb') as f:
-                    try:
-                        content = await resp.read()
-                        f.write(content)
-                    except Exception as e:
-                        logger.error(f"Error saving error on {report_link} {link} {str(e)}")
-                        raise exception_utils.ExpectedError
         try:
             result = self.parse_excel_file_data(random_file_name,excel_link=link,**kwargs)
         except exception_utils.NotSufficientError as e:
@@ -986,6 +1234,7 @@ class DartDataHandler(DataHandlerClass):
         base = copy.deepcopy(default_dict)
         base.update(update_result)
         return base
+
         
     async def return_reportlink_data(self,link="",code="",reg_date=None,corp_name="",market_type="",title="",period_type=YEARLY_REPORT,reporter=""):
         total_result = []
@@ -995,23 +1244,23 @@ class DartDataHandler(DataHandlerClass):
         default_dict = {
             'report_link':link,
             'code':code,
-            'corp_name':code, 
+            'corp_name':corp_name, 
             'period_type':period_type,
             'reg_date':reg_date,
             'market_type':market_type
         }
         try:
-            soup = await return_async_get_soup(link)
+            soup = await self.return_async_get_soup(link)
             if not soup:
                 logger.error(f"Error occured while no soup {link}")
                 return []
-        except exception_utils.ReturnSoupError:
+        except ValueError:
             logger.error(f"Error occured while return soup {link}")
             return []
         try:
             stock_count_link = ""
             stock_count_link = parse_stockcount_section_link(soup)
-            stockcount_soup = await return_async_get_soup(stock_count_link)
+            stockcount_soup = await self.return_async_get_soup(stock_count_link)
             stock_count_data = return_stockcount_data(link, stockcount_soup)
         except Exception as e: 
             logger.error(
@@ -1056,13 +1305,22 @@ class DartDataHandler(DataHandlerClass):
                 logger.error(f"No data exists in link {link}")
             failed_info = self.return_update_dict(default_dict,{})
             return total_result,failed_result
+
+        # 연결재무재표가 일반재무재표와 같은페이지에있는경우 이를확인시킨다.
+        is_connected_inside_normal =  False
+        if not connected_table_link:
+            connected_table_link = normal_table_link
+            is_connected_inside_normal = True
+
+
+
         get_table_tasks  = []
         if normal_table_link and not is_normal_data_made:
             get_table_tasks.append(
                 (
                     NORMAL_FINANCIAL_STATEMENTS,
                     normal_table_link,
-                    return_async_get_soup(normal_table_link)
+                    self.return_async_get_soup(normal_table_link)
                 )
             )  
         if connected_table_link and not is_connected_data_made:
@@ -1070,7 +1328,7 @@ class DartDataHandler(DataHandlerClass):
                 (
                     CONNECTED_FINANCIAL_STATEMENTS,
                     connected_table_link,
-                    return_async_get_soup(connected_table_link)
+                    self.return_async_get_soup(connected_table_link)
                 )
             )
         # Excel parsing 이후 table 결과값이 존재하지 않으면 결과 반환
@@ -1091,7 +1349,10 @@ class DartDataHandler(DataHandlerClass):
             try:
                 report_type = get_table_tasks[idx][0]
                 table_link = get_table_tasks[idx][1]
-                result = self.parse_report_link(table_link,soup)
+                if idx == 1 and is_connected_inside_normal:
+                    result = self.parse_report_link(table_link,soup,is_connected_inside_normal=True)
+                else:
+                    result = self.parse_report_link(table_link,soup,is_connected_inside_normal=False)
                 result['report_link'] = link
                 result['table_link'] = table_link
                 result['code'] = code
@@ -1114,15 +1375,17 @@ class DartDataHandler(DataHandlerClass):
                 failed_result.append(failed_info)
         return total_result,failed_result
 
-    def return_company_report_link_list(self,code,company_name,report_type):
+    def return_company_report_link_list(self,code,company_name,report_type,start_date=None):
         final_results = []
-        start_date = None
         currentPage = 1
         while True: 
             try:
-                if currentPage>50:
+                if currentPage>1000:
                     break
                 result = self.parse_single_page_data(code,currentPage,report_type,company_name,start_date=start_date,textCrpCik=None)
+                if not result:
+                    newcode = ''.zfill(6-len(code)) + code
+                    result = self.parse_single_page_data(newcode,currentPage,report_type,company_name,start_date=start_date,textCrpCik=None)
                 currentPage += 1
                 if not result:
                     break 
@@ -1130,9 +1393,16 @@ class DartDataHandler(DataHandlerClass):
             except Exception as e:
                 break 
         return final_results
-    def return_company_report_data_list(self,code,company,report_type):
+    def return_company_report_data_list(self,code,company,start_date=None):
         try:
-            report_list = self.return_company_report_link_list(code,company,report_type)
+            report_list = self.return_company_report_link_list(code,company, fp_types.YEARLY_REPORT,start_date=start_date)
+        except Exception as e: 
+            errorMessage = f"Error occured while return report link list {code},{company} "+str(e)
+            logger.error(errorMessage)
+            raise ValueError(errorMessage)
+        try:
+            quarter_list = self.return_company_report_link_list(code,company, fp_types.QUARTER_REPORT,start_date=start_date)
+            report_list.extend(quarter_list)
         except Exception as e: 
             errorMessage = f"Error occured while return report link list {code},{company} "+str(e)
             logger.error(errorMessage)
@@ -1185,7 +1455,7 @@ class DartDataHandler(DataHandlerClass):
         except Exception as e: 
             raise ValueError(f"Error connect to link with driver {link}")
 
-        matching_table_list = driver.find_elements_by_xpath("//p/following-sibling::table/tbody[count(descendant::tr)=1 or count(descendant::tr)=2]")
+        matching_table_list = driver.find_elements_by_xpath("//p/following-sibling::table/tbody[count(descendant::tr)=1 or count(descendant::tr)=2]/..")
         if table_dict.get('cashflow'):
             try:
                 cash_remained_keys = self.return_remained_petovski_data(result,petovski_cash_dict)
@@ -1239,7 +1509,8 @@ class DartDataHandler(DataHandlerClass):
                     driver,
                     balance_table,
                     petovski_balancesheet_dict,
-                    table_dict['balance_sheet']['unit']
+                    table_dict['balance_sheet']['unit'],
+                    additional_table_data=fp_types.additional_balance_data
                 )
             else:
                 balachesheet_result = {}
@@ -1302,11 +1573,11 @@ class DartDataHandler(DataHandlerClass):
                     continue
         raise ValueError
         
-    def parsing_driver_table_data(self, driver, table_elem, reg_data, unit, insert_span_needed=True):
+    def parsing_driver_table_data(self, driver, table_elem, reg_data, unit, insert_span_needed=True,additional_table_data={}):
         result = {}
-        if insert_span_needed:
-            td_list = table_elem.find_elements_by_xpath('.//td')
-            for td in td_list:
+        td_list = table_elem.find_elements_by_xpath('.//td')
+        for td in td_list:
+            if not td.find_elements_by_xpath('.//span'):
                 inner_html_string = '<br>'.join(['<span>'+x.strip()+'</span>' for x in td.get_attribute("innerHTML").split('<br>')])
                 driver.execute_script(f"arguments[0].innerHTML='{inner_html_string}'", td)
         td_list = table_elem.find_elements_by_xpath('.//td')
@@ -1320,20 +1591,31 @@ class DartDataHandler(DataHandlerClass):
                 is_re_caught = False       
                 found_re = ''
                 for table_re in reg_data:
-                    if result.get(table_re,None) is None and re.search(reg_data[table_re],span_text):
+                    if result.get(table_re, None) is None and re.search(reg_data[table_re],span_text):
+                        location = span.location
+                        location_y = location.get('y')
                         is_re_caught = True
                         found_re = table_re
                         break 
+                if not is_re_caught:
+                    for additional_re in additional_table_data:
+                        if result.get(additional_re, None) is None and re.search(additional_table_data[additional_re],span_text):
+                            location = span.location 
+                            location_y = location.get('y')
+                            is_re_caught = True
+                            found_re = additional_re
+                            break
+
                 if is_re_caught:
-                    location = span.location
-                    location_y = location.get('y')
                     value = None
                     for span_list in value_span_list:
                         value_found = False
-                        for span in span_list:
-                            if span.location.get("y") ==location_y:
+                        for value_span in span_list:
+                            # if table_re == 'total_assets':
+                            #     print(span_text,'d'*100,location_y,span.location.get("y"),span.text)
+                            if value_span.location.get("y") == location_y:
                                 try:
-                                    value = find_value(span.text,unit,data_key=found_re)
+                                    value = find_value(value_span.text,unit,data_key=found_re)
                                     result[found_re] = value
                                     value_found = True
                                     break
