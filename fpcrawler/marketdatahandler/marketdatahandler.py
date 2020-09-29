@@ -1,5 +1,4 @@
 import csv
-from datetime import datetime as dt
 from io import BytesIO, TextIOWrapper
 import asyncio
 import aiohttp
@@ -11,13 +10,6 @@ def isfloat(value):
         return True
     except ValueError:
         return False
-
-# 'Code':str, 'Name':str, 'Open':float, 
-# 'High':float, 'Low':float, 'Close':float, 
-# 'Volume':float, 'Amount':float,
-# 'Changes':float, 'ChangesRatio':float, 
-# 'Marcap':float, 'Stocks':float, 'MarcapRatio': float, 
-# 'ForeignShares':float, 'ForeignRatio':float, 'Rank':float
 
 
 def value_converter(k, v):

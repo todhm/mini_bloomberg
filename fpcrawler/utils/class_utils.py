@@ -43,9 +43,13 @@ class BaseTest(unittest.TestCase):
 
 class DataHandlerClass: 
 
-
-    def _run(self,coro):
+    def _run(self, coro):
         return asyncio.get_event_loop().run_until_complete(coro)
+
+    def reset_loop(self):
+        asyncio.set_event_loop(self.loop)
+        timeout = 3
+        request_counts = 10
 
     def return_async_func_results(
             self, 
@@ -59,35 +63,40 @@ class DataHandlerClass:
     ):
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        timeout = 10
-        request_counts = 10
-        self.timeout = ClientTimeout(total=timeout)
-        self.conn = TCPConnector(limit=request_counts)
-        self.session = ClientSession(
-            connector=self.conn, 
-            loop=loop, 
-            timeout=self.timeout
-        )
         async_list = []
         for data in data_list:
             method = getattr(self, method_name)
-            is_single_args = isinstance(data,Iterable) and type(data) != str
+            is_single_args = isinstance(data, Iterable) and type(data) != str
             if is_single_args:
-                task = loop.create_task(method(**data,**kwargs))
+                task = loop.create_task(method(
+                    **data,
+                    **kwargs
+                ))
             else:
-                task = loop.create_task(method(data,*args,**kwargs))
+                task = loop.create_task(
+                    method(
+                        data,
+                        *args,
+                        **kwargs
+                    )
+                )
 
             if use_callback:
-                if getattr(self,callback_func):
-                    callback_method = getattr(self,callback_func)
+                if getattr(self, callback_func):
+                    callback_method = getattr(self, callback_func)
                     if callback_args:
                         if is_single_args:
                             task.add_done_callback(
-                            functools.partial(callback_method,data)
+                                functools.partial(callback_method, data)
                             )
                         else:
                             task.add_done_callback(
-                            functools.partial(callback_method,data,*args,**kwargs)
+                                functools.partial(
+                                    callback_method,
+                                    data,
+                                    *args,
+                                    **kwargs
+                                )
                             )
                     else:
                         task.add_done_callback(callback_method)

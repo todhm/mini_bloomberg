@@ -4,64 +4,31 @@ import json
 from random import randint
 import unittest
 from unittest.mock import patch
-from datahandler.dartdatahandler import DartDataHandler
-from fp_types import YEARLY_REPORT
+from darthandler.dartdatahandler import DartDataHandler
+from darthandler import dartdataparsehandler
+from darthandler import dartdriverparsinghandler
+from fp_types import (
+    YEARLY_REPORT, 
+    QUARTER_REPORT, 
+    MARCH_REPORT,
+    SEPTEMBER_REPORT,
+    SEMINUAL_REPORT
+)
 from utils.api_utils import return_sync_get_soup
 from utils.exception_utils import NotableError
 from utils.class_utils import DataHandlerClass, BaseTest
-
-
-
-
-
-def save_report_list_data(company_report_col, **params):
-    defaults = {
-    "code" : '3670', 
-    "link" : "http://dart.fss.or.kr/dsaf001/main.do?rcpNo=20060512002342", 
-    "reg_date" : '2018-11-11',
-    "corp_name" : "포스코케미칼", 
-    "market_type" : "유가증권시장", 
-    "title" : "[기재정정]사업보고서 (2005.12)", 
-    "period_type" : "사업보고서",
-     "reporter" : "포스코케미칼"
-    }
-    defaults.update(params)
-    company_report_col.insert_one(defaults)
-    return defaults
-
-
-class DartTest(unittest.TestCase):
-    def setUp(self):
-        super().setUp()
-        self.ddh = DartDataHandler('testdb')
-
-        
-
-
-    def test_dart_link_parse(self):
-        link = 'http://dart.fss.or.kr/dsaf001/main.do?rcpNo=20121114000100'
-        soup = return_sync_get_soup(link)
-        data = self.ddh.parse_financial_section_link(soup)
-        
-
-    def tearDown(self):
-        super().tearDown()
-        
-
-
-
     
+
 class FinanceTest(BaseTest, DataHandlerClass):
+
     def setUp(self):
         super().setUp()
         self.ddh = DartDataHandler('testdb')
-
-        
+    
     def tearDown(self):
         super().tearDown()
         
-
-    def check_return_result(self,result_list,company_name="",code=""):
+    def check_return_result(self, result_list, company_name="", code=""):
         data_field_list = [
             'cashflow_from_operation',
             'operational_income',
@@ -76,62 +43,90 @@ class FinanceTest(BaseTest, DataHandlerClass):
             'current_debt'
         ]
         
-        self.assertTrue(len(result_list)>0)
+        self.assertTrue(len(result_list) > 0)
         for result in result_list:
             for key in data_field_list:
-                self.assertTrue(type(result[key]),float)
+                self.assertTrue(type(result[key]), float)
             if company_name:
-                self.assertEqual(result['corp_name'],company_name)
-                self.assertEqual(result['code'],code)
+                self.assertEqual(result['corp_name'], company_name)
+                self.assertEqual(result['code'], code)
 
-
-    def check_returned_report_link_data(self,data_list):
+    def check_returned_report_link_data(self, data_list):
         for data in data_list:
             self.assertTrue('http' in data['link'])
             self.assertTrue(data['code'].isdigit())
             self.assertTrue(data['market_type'])
             self.assertTrue(data['market_type'])
-            self.assertEqual(type(data['reg_date']),str)
+            self.assertEqual(type(data['reg_date']), str)
             date = dt.strptime(data['reg_date'], '%Y-%m-%d')
             self.assertEqual(type(date), dt)
 
-
-    def check_finance_table_dictionary(self,financial_table_data):
-        data_key_list = ['balance_sheet','cashflow','income_statement']  
+    def check_finance_table_dictionary(self, financial_table_data):
+        data_key_list = ['balance_sheet', 'cashflow', 'income_statement']  
         for key in data_key_list:
             self.assertTrue(key in financial_table_data.keys())
 
-    
-
-    def check_quarter_data(self,link):
-        pass
-
-
-    def check_two_period_data(self,link):
-        pass
-
-
-
-
-
-    def check_annual_data(self,link):
-        pass
-
     def test_return_report_link_list(self):
         stock_code = 5930
-        company_name="삼성전자"
-        report_list = self.ddh.return_company_report_link_list(stock_code,company_name)
-        self.assertTrue(len(report_list)>=60)
-        self.assertEqual(type(report_list[0]['link']),str)
-        self.assertEqual(type(report_list[0]['reg_date']),dt)
-        self.assertEqual(type(report_list[0]['market_type']),str)
-        self.assertEqual(type(report_list[0]['title']),str)
-        self.assertEqual(type(report_list[0]['corp_name']),str)
+        company_name = "삼성전자"
+        report_list = self.ddh.return_company_report_link_list(
+            stock_code, 
+            company_name,
+            QUARTER_REPORT
+        )
+        self.assertTrue(len(report_list) >= 30)
+        for report in report_list:
+            self.assertEqual(type(report['link']), str)
+            self.assertEqual(
+                type(
+                    dt.strptime(
+                        report['reg_date'],
+                        '%Y-%m-%d'
+                    )
+                ), 
+                dt
+            )
+            if '03' in report['title']:
+                self.assertEqual(report['period_type'], MARCH_REPORT)
+            elif '09' in report['title']:
+                self.assertEqual(report['period_type'], SEPTEMBER_REPORT)
+            self.assertEqual(type(report['market_type']), str)
+            self.assertEqual(type(report['title']), str)
+            self.assertEqual(type(report['corp_name']), str)
+
+    def test_return_seminual_report_link_list(self):
+        stock_code = 5930
+        company_name = "삼성전자"
+        report_list = self.ddh.return_company_report_link_list(
+            stock_code, 
+            company_name,
+            SEMINUAL_REPORT
+        )
+        self.assertTrue(len(report_list) >= 15)
+        for report in report_list:
+            self.assertEqual(type(report['link']), str)
+            self.assertEqual(
+                type(
+                    dt.strptime(
+                        report['reg_date'],
+                        '%Y-%m-%d'
+                    )
+                ), 
+                dt
+            )
+            self.assertEqual(report['period_type'], SEMINUAL_REPORT)
+            self.assertEqual(type(report['market_type']), str)
+            self.assertEqual(type(report['title']), str)
+            self.assertEqual(type(report['corp_name']), str)
 
     def test_return_report_link_list_hyundai(self):
         stock_code = 5380
         company_name = "현대자동차"
-        report_list = self.ddh.return_company_report_link_list(stock_code,company_name,YEARLY_REPORT)
+        report_list = self.ddh.return_company_report_link_list(
+            stock_code,
+            company_name,
+            YEARLY_REPORT
+        )
         self.assertTrue(len(report_list)>=11)
         self.assertEqual(type(report_list[0]['link']),str)
         self.assertEqual(type(report_list[0]['reg_date']),dt)
@@ -139,7 +134,6 @@ class FinanceTest(BaseTest, DataHandlerClass):
         self.assertEqual(type(report_list[0]['title']),str)
         self.assertEqual(type(report_list[0]['corp_name']),str)
 
-        
     def test_excel_data_case(self):
         link = 'http://dart.fss.or.kr/dsaf001/main.do?rcpNo=20190401003281'
         result = self._run(self.ddh.return_reportlink_data(link=link))
@@ -148,7 +142,10 @@ class FinanceTest(BaseTest, DataHandlerClass):
         for result in result_list:
             if result.get("report_type") == 'NORMAL_FINANCIAL_STATEMENTS':
                 self.assertEqual(result['current_assets'], 31246722206)
-                self.assertEqual(result['cashflow_from_operation'], 18368166497)    
+                self.assertEqual(
+                    result['cashflow_from_operation'], 
+                    18368166497
+                )    
                 self.assertEqual(result['total_assets'], 91648911057)
                 self.assertEqual(result['longterm_debt'], 2095096477)
                 self.assertEqual(result['current_debt'], 23870127281)
@@ -158,7 +155,10 @@ class FinanceTest(BaseTest, DataHandlerClass):
                 self.assertEqual(result['net_income'], 6524582683)
             else:
                 self.assertEqual(result['current_assets'], 45900138047)
-                self.assertEqual(result['cashflow_from_operation'], 26996888606)
+                self.assertEqual(
+                    result['cashflow_from_operation'], 
+                    26996888606
+                )
                 self.assertEqual(result['total_assets'], 166309402053)
                 self.assertEqual(result['longterm_debt'], 11068559688)
                 self.assertEqual(result['current_debt'], 65993597856)
@@ -166,28 +166,6 @@ class FinanceTest(BaseTest, DataHandlerClass):
                 self.assertEqual(result['sales'], 152690561553)
                 self.assertEqual(result['operational_income'], 15774064694)
                 self.assertEqual(result['net_income'], 10166296071)
-
-    # def test_second_error_case(self):
-    #     link = 'http://dart.fss.or.kr/dsaf001/main.do?rcpNo=20190515000764'
-    #     result = self._run(self.ddh.return_reportlink_data(link=link))
-    #     self.check_return_result(result)
-    
-
-    # def test_third_error_case(self):
-    #     link = 'http://dart.fss.or.kr/dsaf001/main.do?rcpNo=20100331001680'
-    #     result,failed_result = self._run(self.ddh.return_reportlink_data(link=link))
-    #     self.check_return_result(result)
-    #     self.assertTrue(result[0]['cashflow_from_operation']>0)
-
-
-    # def test_complicated_table_case(self):
-    #     link = 'http://dart.fss.or.kr/report/viewer.do?rcpNo=20000330000068&dcmNo=37890&eleId=3593&offset=399014&length=227055&dtd=dart2.dtd'
-    #     financial_table_data = self.ddh.return_financial_report_table(link)
-    #     self.check_finance_table_dictionary(financial_table_data)
-    #     for key in financial_table_data:
-    #         self.assertEqual(financial_table_data[key]['unit'],1)
-
-
         
     def test_return_finance_link_report_list(self):
         code = 311060
@@ -197,55 +175,6 @@ class FinanceTest(BaseTest, DataHandlerClass):
         result = self.ddh.return_company_report_list(code,corp_name,reg_date)
         self.assertTrue(len(result)>=1)
         self.check_returned_report_link_data(result)
-
-    # def test_balancesheet_error_case(self):
-    #     link = 'http://dart.fss.or.kr/report/viewer.do?rcpNo=20050331002046&dcmNo=1049370&eleId=6415&offset=715476&length=306592&dtd=dart2.dtd'
-    #     soup = return_sync_get_soup(link)
-    #     link_data = self.ddh.parse_report_link(link,soup)
-
-    # def test_parse_finance_link_soup(self):
-    #     link = 'http://dart.fss.or.kr/dsaf001/main.do?rcpNo=20190418000453'
-    #     soup = return_sync_get_soup(link)
-    #     link_data = self.ddh.parse_financial_section_link(soup)
-    #     self.assertTrue(len(link_data.get('link_fs'))>0)
-    #     self.assertTrue(len(link_data.get('link_connected_fs'))>0)
-
-
-    # def test_return_finance_report_table(self):
-    #     link = 'http://dart.fss.or.kr/report/viewer.do?rcpNo=20190418000453&dcmNo=6704575&eleId=17&offset=255858&length=89703&dtd=dart3.xsd'
-    #     soup = return_sync_get_soup(link)
-    #     financial_table_data = self.ddh.return_financial_report_table(link,soup)
-    #     self.check_finance_table_dictionary(financial_table_data)
-    #     for key in financial_table_data:
-    #         self.assertEqual(financial_table_data[key]['unit'],1)
-
-
-    # def test_parse_cashflow_table(self):
-    #     link = 'http://dart.fss.or.kr/report/viewer.do?rcpNo=20190418000453&dcmNo=6704575&eleId=17&offset=255858&length=89703&dtd=dart3.xsd'
-    #     financial_table_data = self.ddh.return_financial_report_table(link)
-    #     cashflow_table = financial_table_data['cashflow']['table']
-    #     unit = financial_table_data['cashflow']['unit']
-    #     result = self.ddh.parse_cashflow_table(cashflow_table,unit)
-        
-    # def test_return_finance_none_exists_table(self):
-    #     link = 'http://dart.fss.or.kr/report/viewer.do?rcpNo=20190418000453&dcmNo=6704575&eleId=15&offset=255535&length=156&dtd=dart3.xsd'
-    #     self.assertRaises(NotableError, self.ddh.return_financial_report_table, link)
-
-    # def test_return_finance_report_table_with_none_table_header(self):
-    #     link ='http://dart.fss.or.kr/report/viewer.do?rcpNo=20000515000236&dcmNo=59796&eleId=3334&offset=401521&length=54670&dtd=dart2.dtd'
-    #     soup = return_sync_get_soup(link)
-    #     financial_table_data = self.ddh.return_financial_report_table(link,soup)
-    #     self.check_finance_table_dictionary(financial_table_data)
-
-
-    # def test_parse_big_unit_finance_table_parser(self):
-    #     link = 'http://dart.fss.or.kr/report/viewer.do?rcpNo=20050331002046&dcmNo=1049370&eleId=6415&offset=715476&length=306592&dtd=dart2.dtd'
-    #     soup = return_sync_get_soup(link)
-    #     financial_table_data = self.ddh.return_financial_report_table(link,soup)
-    #     self.check_finance_table_dictionary(financial_table_data)
-    #     for key in financial_table_data:
-    #         self.assertEqual(financial_table_data[key]['unit'],1000000)
-
 
     def test_parse_eq_offer_list(self):
         stock_code = 5930
@@ -272,7 +201,7 @@ class FinanceTest(BaseTest, DataHandlerClass):
     def test_eq_offer_api(self):
         code = 5930
         company_name="삼성전자"
-        post_data = {'company':company_name,'code':code}
+        post_data = {'company':company_name, 'code':code}
         response = self.client.post('/return_eq_api',json=post_data)
         eq_offer_list = json.loads(response.data)
         self.assertEqual(len(eq_offer_list),1)
@@ -353,55 +282,35 @@ class FinanceTest(BaseTest, DataHandlerClass):
                 self.assertEqual(result['cashflow_from_operation'], 10952979075)    
         
 
-        # self.check_onecolumn_data(link)
-
-
+        # self.check_onecolumn_data(link
     def test_where_multiple_title_column(self):
         link = 'http://dart.fss.or.kr/dsaf001/main.do?rcpNo=20001115000043'
-        result_list,failed_result = self._run(self.ddh.return_reportlink_data(link=link))
-        self.assertEqual(len(result_list),1)
+        result_list, failed_result = self._run(
+            self.ddh.return_reportlink_data(link=link)
+        )
+        self.assertEqual(len(result_list), 1)
         for result in result_list:
             if result.get("report_type") == 'NORMAL_FINANCIAL_STATEMENTS':
                 self.assertEqual(result['current_assets'], 3149876688)
                 self.assertEqual(result['total_assets'], 3894849693)
-                self.assertEqual(result['longterm_debt'],1000000000)
+                self.assertEqual(result['longterm_debt'], 1000000000)
                 self.assertEqual(result['current_debt'], 502720137)
                 self.assertEqual(result['sales'], 6129323104)
-                #dart상의 재무제표자체에 에러가있음 self.assertEqual(result['operational_income'], -500010728)
-                self.assertEqual(result['net_income'],-524010221)
-
-
-
-    # def test_income_parse_error(self):
-    #     link ='http://dart.fss.or.kr/dsaf001/main.do?rcpNo=20061124000207'
-    #     self.check_two_period_data(link)
-
-
-    # def test_only_one_datacolumn_case(self):
-    #     link = 'http://dart.fss.or.kr/dsaf001/main.do?rcpNo=20190603000157'
-    #     self.check_onecolumn_data(link)
-
-
-    # def test_find_value_case(self):
-    #     link = 'http://dart.fss.or.kr/dsaf001/main.do?rcpNo=20180514003685'
-    #     self.check_two_period_data(link)
-    #     link ='http://dart.fss.or.kr/dsaf001/main.do?rcpNo=20171031000424'
-    #     self.check_annual_data(link)
-
-    # def test_connected_error_case(self):
-    #     link = 'http://dart.fss.or.kr/dsaf001/main.do?rcpNo=20171114000945'
-    #     self.check_two_period_data(link)
-
-
-    # def test_connected_none_table(self):
-    #     link = 'http://dart.fss.or.kr/dsaf001/main.do?rcpNo=20000515000236'
-    #     self.check_annual_data(link)
+                self.assertEqual(result['net_income'], -524010221)
 
     def test_driver_parsing_table(self):
         table_url = 'http://dart.fss.or.kr/report/viewer.do?rcpNo=20030407000694&dcmNo=582896&eleId=13134&offset=1542891&length=37875&dtd=dart2.dtd'
         soup = return_sync_get_soup(table_url)
-        financial_table_data = self.ddh.return_financial_report_table(table_url,soup)
-        result = self.ddh.return_driver_report_data(table_url, financial_table_data)
+        financial_table_data = (
+            dartdataparsehandler
+            .return_financial_report_table(
+                table_url,
+                soup
+            )
+        )
+        result = dartdriverparsinghandler.return_driver_report_data(
+            table_url, financial_table_data
+        )
         expected_current_assets = 12079994
         cashflow_from_operation = 11193197
         total_assets = 34439600
@@ -410,18 +319,24 @@ class FinanceTest(BaseTest, DataHandlerClass):
         sales = 40511563
         net_income = 7051761
         operational_income = 7244672
-        self.assertEqual(result['current_assets'],expected_current_assets*1000000)
-        self.assertEqual(result['cashflow_from_operation'],cashflow_from_operation*1000000)    
-        self.assertEqual(result['total_assets'],total_assets*1000000)
-        self.assertEqual(result['longterm_debt'],longterm_debt*1000000)
-        self.assertEqual(result['current_debt'],current_debt*1000000)
-        self.assertEqual(result['sales'],sales*1000000)
-        self.assertEqual(result['operational_income'],operational_income*1000000)
+        self.assertEqual(
+            result['current_assets'], 
+            expected_current_assets * 1000000
+        )
+        self.assertEqual(
+            result['cashflow_from_operation'], 
+            cashflow_from_operation * 1000000
+        )    
+        self.assertEqual(result['total_assets'],total_assets * 1000000)
+        self.assertEqual(result['longterm_debt'],longterm_debt * 1000000)
+        self.assertEqual(result['current_debt'],current_debt * 1000000)
+        self.assertEqual(result['sales'], sales * 1000000)
+        self.assertEqual(result['operational_income'], operational_income * 1000000)
         self.assertEqual(result['net_income'],net_income*1000000)
 
     def test_driver_parsing_list_case(self):
         link = 'http://dart.fss.or.kr/dsaf001/main.do?rcpNo=20030407000694'
-        result_list,failed_result = self._run(self.ddh.return_reportlink_data(link=link))
+        result_list, failed_result = self._run(self.ddh.return_reportlink_data(link=link))
         self.assertEqual(len(result_list),2)
         for result in result_list:
             if result.get("report_type") == 'NORMAL_FINANCIAL_STATEMENTS':
@@ -751,3 +666,22 @@ class FinanceTest(BaseTest, DataHandlerClass):
                 self.assertEqual(result['operational_income'], 4134772000000)
                 self.assertEqual(result['net_income'], 3272633000000)
                 self.assertEqual(result['book_value'], 26858805000000)
+
+    def test_report_error_case(self):
+        url = 'http://dart.fss.or.kr/dsaf001/main.do?rcpNo=20110516000559'
+        result_list,failed_result = self._run(self.ddh.return_reportlink_data(link=url))
+        self.assertEqual(len(result_list),2)
+
+        # for result in result_list:
+        #     if result.get("report_type") == 'NORMAL_FINANCIAL_STATEMENTS':
+        #         self.assertEqual(result['cashflow_from_operation'], 1343507000000)    
+        #         self.assertEqual(result['total_assets'], 30844250000000)
+        #         self.assertEqual(result['operational_income'],1679986000000)
+        #         self.assertEqual(result['net_income'], 1672908000000)
+        #         self.assertEqual(result['book_value'],19430807000000)
+        #     else:
+        #         self.assertEqual(result['cashflow_from_operation'], 1343507000000)    
+        #         self.assertEqual(result['total_assets'], 288041796000000)
+        #         self.assertEqual(result['operational_income'], 4134772000000)
+        #         self.assertEqual(result['net_income'], 3272633000000)
+        #         self.assertEqual(result['book_value'], 26858805000000)

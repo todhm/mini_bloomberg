@@ -2,22 +2,23 @@ from flask import (
     render_template, Blueprint, jsonify, 
     request, current_app, send_file
 )
-from datahandler.dartdatahandler import DartDataHandler
-from datahandler import marketdatahandler 
-from datahandler.funddatahandler import return_fund_data_list
-import fp_types
+from darthandler.dartdatahandler import DartDataHandler
+from marketdatahandler import marketdatahandler 
+from funddatahandler.funddatahandler import return_fund_data_list
 import logging
-
+import requests
 
 crawlapp_api = Blueprint('crawlapp', __name__,)
 logger = logging.getLogger(__name__)
 
-@crawlapp_api.route('/',methods=["GET"])
+
+@crawlapp_api.route('/', methods=["GET"])
 def hello_world():
-    result = {'result':'Hello World'}
-    return jsonify(result)
+  
+    r = requests.get('http://ifconfig.me/ip')
+    return 'You connected from IP address: ' + r.text
 
-
+    
 @crawlapp_api.route('/company_report_data_list', methods=["POST"])
 def company_report_data_list():
     data = request.get_json()

@@ -30,9 +30,17 @@ services:
     volumes:
       - postgres-data:/var/lib/postgresql/data
 
+  torproxy:
+    image: dockage/tor-privoxy:latest
+    ports:
+      - "9050:9050" # Tor proxy
+      - "9051:9051" # Tor control port
+      - "8118:8118" # Privoxy
+    networks:
+      - backend
+
   fpcrawler:
     image: fidelkang/fpcrawler
-    container_name: fpcrawler
     build:
       context: ./fpcrawler
       dockerfile: Dockerfile

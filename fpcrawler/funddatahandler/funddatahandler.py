@@ -29,7 +29,9 @@ def return_fund_data_list(
     final_result_list = []
     for data in data_list:
         try:
-            sdh = SingleReportHandler(driver, **data,download_path=download_path)
+            sdh = SingleReportHandler(
+                driver, **data, download_path=download_path
+            )
             result_list = sdh.return_fund_data()
             final_result_list.append(result_list)
         except Exception as e: 
@@ -82,7 +84,13 @@ class SingleReportHandler(object):
             ignored_exceptions=[StaleElementReferenceException]
         ).until(
             EC.element_to_be_clickable(
-                (By.XPATH, f'//select[@id="uYear_input_0"]/option[contains(.,"{year}")]')
+                (
+                    By.XPATH, 
+                    (
+                        '//select[@id="uYear_input_0"]'
+                        f'/option[contains(.,"{year}")]'
+                    )
+                )
             )
         )
         year_elem.find_element_by_xpath(
@@ -102,7 +110,11 @@ class SingleReportHandler(object):
             ignored_exceptions=[StaleElementReferenceException]
         ).until(
             EC.element_to_be_clickable(
-                (By.XPATH, f'//select[@id="uMonth_input_0"]/option[contains(.,"{month}")]')
+                (
+                    By.XPATH, 
+                    '//select[@id="uMonth_input_0"]'
+                    f'/option[contains(.,"{month}")]'
+                )
             )
         )
         month_elem \
@@ -248,7 +260,11 @@ class SingleReportHandler(object):
     def return_fund_data(self):
         try:
             self.driver.set_page_load_timeout(10)
-            self.driver.get("http://dis.kofia.or.kr/websquare/index.jsp?w2xPath=/wq/fundann/DISFundROPCmpAnn.xml&divisionId=MDIS01009001000000&serviceId=SDIS01009001000")
+            self.driver.get(
+                "http://dis.kofia.or.kr/websquare/index.jsp"
+                "?w2xPath=/wq/fundann/DISFundROPCmpAnn.xml"
+                "&divisionId=MDIS01009001000000&serviceId=SDIS01009001000"
+            )
             WebDriverWait(
                 self.driver, 
                 20, 

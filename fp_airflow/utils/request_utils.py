@@ -46,7 +46,7 @@ async def async_report_call(loop, url, data_list, timeout=1000, request_counts=5
     timeout = ClientTimeout(total=timeout)
     conn = TCPConnector(limit=request_counts)
     async_list = []
-    async with ClientSession(connector=conn, loop=loop) as session:
+    async with ClientSession(connector=conn, timeout=timeout) as session:
         for item in data_list:
             async_list.append(call_async_post(session, url, item))
         all_results = await asyncio.gather(*async_list, return_exceptions=True)

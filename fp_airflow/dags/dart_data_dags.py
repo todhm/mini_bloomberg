@@ -20,7 +20,7 @@ default_args = {
     'email': ['gmlaud14@gmail.com'],
     'email_on_failure': True,
     'email_on_retry': True,
-    'retries':1,
+    'retries': 1,
     'retry_delay': timedelta(seconds=5),
     'wait_for_downstream':False,
     'provide_context':True
@@ -46,7 +46,7 @@ company_prepare_tasks = PythonOperator(
         },
     )
 
-total_number = 10
+total_number = 15
 for i in range(total_number):
     save_report_data = PythonOperator(
         task_id=f'save_report_data_{i}',

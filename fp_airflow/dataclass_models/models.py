@@ -12,7 +12,7 @@ class CompanyReport:
     company: str = ""
     company_category: str = ""
     main_products: str = ""
-    start_date: str = '20160101'
+    start_date: str = ''
     register_date: dt = dt.now()
         
     def __init__(self, *args, **kwargs):
@@ -59,7 +59,10 @@ class CompanyReport:
                 .find({}, {"_id": False})
                 .limit(single_page_company_counts)
             )
-        return list(search_table_results)
+        data_list = list(search_table_results)
+        for x in data_list:
+            x['register_date'] = dt.strftime(x['register_date'], '%Y%m%d')
+        return data_list
             
 
 
