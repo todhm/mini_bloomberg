@@ -166,6 +166,22 @@ class ApiTest(unittest.TestCase):
             self.assertEqual(type(data['Rank']), float)
             self.assertEqual(type(data['Date']), str)
 
+    def test_report_airflow_error_case(self):
+        post_data = {
+            'code': 50, 
+            'company': '경방', 
+            'company_category': '제재 및 목재 가공업', 
+            'main_products': 'PB,MDF,바닥재,강화,재생목재,LPM,제재목 제조,도소매,무역/임업,벌목관련 사업', 
+            'start_date': '20160101', 
+            'register_date': '20031104'
+        }
+        response = self.client.post(
+            '/company_report_data_list', 
+            json=post_data
+        )
+        result = json.loads(response.data)
+        success_list = result.get('success_list')
+        self.assertTrue(len(success_list) >= 1)
     # def test_fund_data_list_api(self):
     #     data_list = [
     #         {

@@ -25,6 +25,7 @@ from fp_types import (
 from utils import exception_utils
 from scrapy.http import HtmlResponse
 import logging
+from copy import deepcopy
 
 logger = logging.getLogger(__name__)
 
@@ -151,7 +152,8 @@ class DartReportHandler(object):
                 petovski_cash_dict, root, unit
             )
         if not self.result.get('net_income'):
-            for key in self.result.keys():
+            result_key_list = deepcopy(list(self.result.keys()))
+            for key in result_key_list:
                 if re.search(
                     petovski_income_statement_dict['net_income'], 
                     key

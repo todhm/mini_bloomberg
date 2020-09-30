@@ -729,8 +729,8 @@ def parse_incomestatement_table(table, unit, table_style):
 
 
 def return_remained_petovski_data(result: dict, data_dict: dict) -> list:
-    re_key_list = set(data_dict.keys())
-    inserted_data_keys = set(result.keys())
+    re_key_list = copy.deepcopy(set(data_dict.keys()))
+    inserted_data_keys = copy.deepcopy(set(result.keys()))
     remained_keys = re_key_list - inserted_data_keys
     return list(remained_keys)
 

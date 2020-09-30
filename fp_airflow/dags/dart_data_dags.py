@@ -30,7 +30,7 @@ dag = DAG(
     'dart_dag', 
     default_args=default_args, 
     schedule_interval=None, 
-    concurrency=5, 
+    concurrency=15, 
     catchup=False
 )
 

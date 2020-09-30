@@ -28,6 +28,7 @@ from fp_types import (
     CONNECTED_FINANCIAL_STATEMENTS, 
     NORMAL_FINANCIAL_STATEMENTS
 )
+from utils.torrequest import reset_ip_address
 from .dartdataparsehandler import (
     parse_stockcount_section_link,
     return_stockcount_data,
@@ -57,6 +58,7 @@ class DartDataHandler(DataHandlerClass):
             ),
             'Connection': 'keep-alive'
         }
+        self.proxies = {'http': 'http:torproxy:8118'}
         
     async def return_async_get_soup(self, url, proxy_object=None, timeout=10):
         try:
@@ -109,17 +111,31 @@ class DartDataHandler(DataHandlerClass):
         if textCrpCik:
             post_data['textCrpCik'] = textCrpCik
         else:
-            data = requests.post(url, data=tpdata, headers=self.headers)
+            data = requests.post(
+                url, 
+                data=tpdata, 
+                headers=self.headers,
+                proxies=self.proxies
+            )
             if data.status_code == 200:
                 if data.text != 'null':
                     post_data['textCrpCik'] = data.text.strip()
                 else:
                     tpdata = {'textCrpNm': code}
-                    data = requests.post(url, data=tpdata)
+                    data = requests.post(
+                        url, 
+                        data=tpdata,
+                        proxies=self.proxies
+                    )
                     if data.text != 'null' and data.status_code == 200:
                         post_data['textCrpCik'] = data.text.strip()
         url = 'http://dart.fss.or.kr/dsab002/search.ax'
-        result = requests.post(url, data=post_data, headers=self.headers)
+        result = requests.post(
+            url, 
+            data=post_data, 
+            headers=self.headers,
+            proxies=self.proxies
+        )
         if result.status_code > 300:
             return []
         soup = BeautifulSoup(result.text, 'html.parser', from_encoding='utf-8')
@@ -218,18 +234,27 @@ class DartDataHandler(DataHandlerClass):
         if textCrpCik:
             post_data['textCrpCik'] = textCrpCik
         else:
-            data = requests.post(url, data=tpdata)
+            data = requests.post(url, data=tpdata, proxies=self.proxies)
             if data.status_code == 200:
                 if data.text != 'null':
                     post_data['textCrpCik'] = data.text.strip()
                 else:
                     tpdata = {'textCrpNm': code}
-                    data = requests.post(url, data=tpdata)
+                    data = requests.post(
+                        url, 
+                        data=tpdata, 
+                        proxies=self.proxies
+                    )
                     if data.text != 'null' and data.status_code == 200:
                         post_data['textCrpCik'] = data.text.strip()
 
         url = 'http://dart.fss.or.kr/dsab002/search.ax'
-        result = requests.post(url, data=post_data, headers=self.headers)
+        result = requests.post(
+            url, 
+            data=post_data, 
+            headers=self.headers,
+            proxies=self.proxies
+        )
         if result.status_code > 300:
             return []
 
@@ -290,6 +315,7 @@ class DartDataHandler(DataHandlerClass):
         failed_list = []
         for i in range(0, len(link_list), jump):
             end = i + jump
+            reset_ip_address()
             result = self.return_async_func_results(
                 'return_reportlink_data', 
                 link_list[i:end], 
@@ -357,7 +383,8 @@ class DartDataHandler(DataHandlerClass):
             async with session.get(
                 link, 
                 headers=self.headers, 
-                allow_redirects=True
+                allow_redirects=True,
+                proxy='socks5://torproxy:9050'
             ) as resp:
                 if resp.status != 200:
                     logger.error(f"Request Error on {report_link} {link}")
@@ -392,12 +419,12 @@ class DartDataHandler(DataHandlerClass):
             )
             logger.error(error_message)
             try:
-                os.remove(random_file_name)
+                os.remove('./' + random_file_name)
             except Exception:
                 pass
             raise ValueError(error_message)
         try:
-            os.remove(random_file_name)
+            os.remove('./' + random_file_name)
         except Exception:
             pass
         return result

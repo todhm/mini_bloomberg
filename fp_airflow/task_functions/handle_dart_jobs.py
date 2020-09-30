@@ -21,6 +21,7 @@ def prepare_company_report_list(
     df = pd.read_excel(excel_file_path)
     df = df.fillna('')
     df = df.sort_values('register_date', ascending=True)
+    df = df[:15]
     df['register_date'] = df['register_date'].apply(lambda x: x.strftime('%Y%m%d'))
     data_list = df.to_dict('records')
     data_list = [CompanyReport(**x).to_json for x in data_list]
@@ -40,8 +41,8 @@ def insert_company_data_list(
     print("current timestamp", ts)
     # report_url = 'https://testcrawler-n7je6n7fnq-an.a.run.app/company_report_data_list'
     # eq_url = 'https://testcrawler-n7je6n7fnq-an.a.run.app/return_eq_api'
-    report_url = 'http://fpcrawler:5000/company_report_data_list'
-    eq_url = 'http://fpcrawler:5000/return_eq_api'
+    report_url = 'http://fpgunicorn:8000/company_report_data_list'
+    eq_url = 'http://fpgunicorn:8000/return_eq_api'
     mongo_uri = os.environ.get("MONGO_URI")
     client = MongoClient(mongo_uri)
     db = client[db_name]

@@ -16,14 +16,14 @@ class TestConfig(object):
 
 class DevelopmentConfig(object):
     """Development configuration."""
-    ENV='development'
+    ENV = 'development'
+    FLASK_ENV = 'development'
     WTF_CSRF_ENABLED = False
     CASH_RECEIPT_TEST = False
     TAX_INVOICE_TEST = False
-    TESTING=False
-    DEBUG=True
-    SECRET_KEY="myprecious"
-    ENV='development'
+    TESTING = False
+    DEBUG = True
+    SECRET_KEY = "myprecious"
 
 class ProductionConfig(object):
     """Development configuration."""
