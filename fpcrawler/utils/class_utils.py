@@ -101,7 +101,7 @@ class DataHandlerClass:
                     else:
                         task.add_done_callback(callback_method)
             async_list.append(task)
-        all_results = asyncio.gather(*async_list)
+        all_results = asyncio.gather(*async_list, return_exceptions=True)
         result_list = loop.run_until_complete(all_results)
         loop.close()
         return result_list

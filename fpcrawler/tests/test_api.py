@@ -172,7 +172,7 @@ class ApiTest(unittest.TestCase):
             'company': '경방', 
             'company_category': '제재 및 목재 가공업', 
             'main_products': 'PB,MDF,바닥재,강화,재생목재,LPM,제재목 제조,도소매,무역/임업,벌목관련 사업', 
-            'start_date': '20160101', 
+            'start_date': '20180101', 
             'register_date': '20031104'
         }
         response = self.client.post(
@@ -181,7 +181,52 @@ class ApiTest(unittest.TestCase):
         )
         result = json.loads(response.data)
         success_list = result.get('success_list')
-        self.assertTrue(len(success_list) >= 1)
+        print(success_list)
+        report_link_list = [x['report_link'] for x in success_list]
+        period_type_list = [x['period_type'] for x in success_list]
+        self.assertTrue(len(success_list) >= 10)
+        self.assertTrue(len(set(report_link_list)) >= 10)
+        self.assertTrue(len(success_list) > len(result['failed_list']))
+        for x in [
+            fp_types.YEARLY_REPORT, 
+            fp_types.SEMINUAL_REPORT, 
+            fp_types.SEPTEMBER_REPORT, 
+            fp_types.MARCH_REPORT
+        ]:
+            self.assertTrue(x in period_type_list)
+
+    def test_new_airflow_case(self):
+        post_data = {
+            'code': 1130, 
+            'company': '대한제분', 
+            'company_category': '제재 및 목재 가공업', 
+            'main_products': 'PB,MDF,바닥재,강화,재생목재,LPM,제재목 제조,도소매,무역/임업,벌목관련 사업', 
+            'start_date': '20180101', 
+            'register_date': '20031104'
+        }
+        response = self.client.post(
+            '/company_report_data_list', 
+            json=post_data
+        )
+        result = json.loads(response.data)
+        success_list = result.get('success_list')
+        print(len(result['success_list']))
+        print(result['failed_list'])
+        report_link_list = [x['report_link'] for x in success_list]
+        period_type_list = [x['period_type'] for x in success_list]
+        report_type_list = [x['report_type'] for x in success_list]
+        print(report_link_list)
+        print(report_type_list)
+        self.assertTrue(len(success_list) >= 10)
+        self.assertTrue(len(set(report_link_list)) >= 10)
+        self.assertTrue(len(success_list) > len(result['failed_list']))
+        for x in [
+            fp_types.YEARLY_REPORT, 
+            fp_types.SEMINUAL_REPORT, 
+            fp_types.SEPTEMBER_REPORT, 
+            fp_types.MARCH_REPORT
+        ]:
+            self.assertTrue(x in period_type_list)
     # def test_fund_data_list_api(self):
     #     data_list = [
     #         {

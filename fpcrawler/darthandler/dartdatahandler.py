@@ -13,9 +13,7 @@ from utils import exception_utils
 from utils.class_utils import DataHandlerClass    
 from aiohttp import (
     ClientSession,
-    ClientTimeout,
 )
-
 from aiosocksy.connector import (
     ProxyConnector, ProxyClientRequest
 )
@@ -28,10 +26,8 @@ from fp_types import (
     CONNECTED_FINANCIAL_STATEMENTS, 
     NORMAL_FINANCIAL_STATEMENTS
 )
-from utils.torrequest import reset_ip_address
+# from utils.torrequest import reset_ip_address
 from .dartdataparsehandler import (
-    parse_stockcount_section_link,
-    return_stockcount_data,
     get_financial_statesments_links
 )
 from .dartreporthandler import DartReportHandler
@@ -58,19 +54,20 @@ class DartDataHandler(DataHandlerClass):
             ),
             'Connection': 'keep-alive'
         }
-        self.proxies = {'http': 'http:torproxy:8118'}
+        self.proxies = {'http': 'http:torproxy:9300'}
+        self.sockproxy = 'socks5://torproxy:9200'
         
     async def return_async_get_soup(self, url, proxy_object=None, timeout=10):
         try:
             connector = ProxyConnector(remote_resolve=False)
             async with ClientSession(
-                connector=connector, 
+                connector=connector,
                 request_class=ProxyClientRequest
             ) as s:
                 async with s.get(
                     url, 
                     headers=self.headers,
-                    proxy='socks5://torproxy:9050'
+                    proxy=self.sockproxy
                 ) as resp:
                     result_string = await resp.text()                    
                     soup = BeautifulSoup(result_string, 'html.parser')
@@ -87,9 +84,10 @@ class DartDataHandler(DataHandlerClass):
     ):
         if not original_code:
             original_code = code
-        url = 'http://dart.fss.or.kr/corp/searchExistAll.ax'
         today_string = dt.strftime(dt.now(), '%Y%m%d')
         start_date = start_date if start_date else '19980101'
+        code = str(code)
+        code = ''.zfill(6-len(code)) + code
         post_data = {
             'currentPage': currentPage,
             'maxResults': 1000,
@@ -107,28 +105,6 @@ class DartDataHandler(DataHandlerClass):
             'closingAccountsMonth': 'all',
             'reportName': report_type,
         }
-        tpdata = {'textCrpNm': company_name}
-        if textCrpCik:
-            post_data['textCrpCik'] = textCrpCik
-        else:
-            data = requests.post(
-                url, 
-                data=tpdata, 
-                headers=self.headers,
-                proxies=self.proxies
-            )
-            if data.status_code == 200:
-                if data.text != 'null':
-                    post_data['textCrpCik'] = data.text.strip()
-                else:
-                    tpdata = {'textCrpNm': code}
-                    data = requests.post(
-                        url, 
-                        data=tpdata,
-                        proxies=self.proxies
-                    )
-                    if data.text != 'null' and data.status_code == 200:
-                        post_data['textCrpCik'] = data.text.strip()
         url = 'http://dart.fss.or.kr/dsab002/search.ax'
         result = requests.post(
             url, 
@@ -310,20 +286,31 @@ class DartDataHandler(DataHandlerClass):
                 currentPage += 1
         return final_result  
     
-    def return_multiple_link_results(self, link_list, jump=10):
+    def return_multiple_link_results(self, link_list, jump=30):
         success_list = []
         failed_list = []
         for i in range(0, len(link_list), jump):
             end = i + jump
-            reset_ip_address()
-            result = self.return_async_func_results(
-                'return_reportlink_data', 
-                link_list[i:end], 
-                use_callback=False
-            )
-            for s, f in result:
-                success_list.extend(s)
-                failed_list.extend(f)
+            try:
+                result = self.return_async_func_results(
+                    'return_reportlink_data', 
+                    link_list[i:end], 
+                    use_callback=False
+                )
+            except Exception as e:
+                logger.error("Error while making multiple requests " + str(e))
+
+            for idx, r in enumerate(result):
+                if isinstance(r, Exception):
+                    logger.error('following result is exception ' + str(r))
+                    continue
+                try:
+                    s, f = r
+                    success_list.extend(s)
+                    failed_list.extend(f)
+                except Exception as e:
+                    logger.error("Invalid results " + str(e))
+                    print(result[idx])
         return {'success_list': success_list, 'failed_list': failed_list}
 
     async def parse_excel_download_link(self, soup):
@@ -349,6 +336,9 @@ class DartDataHandler(DataHandlerClass):
         statements_tag = download_soup.find('td', text=re.compile("재무제표"))
         if not statements_tag:
             raise exception_utils.NoDataError
+        title_text = statements_tag.text
+        if '.pdf' in title_text:
+            raise exception_utils.NoDataError
         report_link = statements_tag.parent.find('a').get('href')
         total_link = 'http://dart.fss.or.kr' + report_link 
         return total_link 
@@ -368,28 +358,27 @@ class DartDataHandler(DataHandlerClass):
         try:
             link = await self.parse_excel_download_link(soup)
         except exception_utils.NoDataError:
-            raise exception_utils.ExpectedError("No data on excel")
+            error_message = "No data on excel " + report_link
+            raise ValueError(error_message)
         random_file_name = ''.join(
             random.choice(string.ascii_uppercase + string.digits) 
             for _ in range(10)
         ) + '.xls'
-        timeout = ClientTimeout(total=10)
         connector = ProxyConnector(remote_resolve=False)
         async with ClientSession(
-            timeout=timeout, 
-            connector=connector,
-            request_class=ProxyClientRequest
+            request_class=ProxyClientRequest,
+            connector=connector
         ) as session:
             async with session.get(
                 link, 
                 headers=self.headers, 
                 allow_redirects=True,
-                proxy='socks5://torproxy:9050'
+                proxy=self.sockproxy,
             ) as resp:
                 if resp.status != 200:
                     logger.error(f"Request Error on {report_link} {link}")
                     raise exception_utils.ExpectedError
-                with open(random_file_name, 'wb') as f:
+                with open('./datacollections/' + random_file_name, 'wb') as f:
                     try:
                         content = await resp.read()
                         f.write(content)
@@ -398,36 +387,36 @@ class DartDataHandler(DataHandlerClass):
                             "Error saving error on "
                             f"{report_link} {link} {str(e)}"
                         )
-                        logger.error(error_message)
-                        raise exception_utils.ExpectedError(error_message)
+                        raise ValueError(error_message)
         try:
             dep = DartExcelParser(
                 link=report_link, 
                 excel_link=link,
-                fname=random_file_name,
+                fname='./datacollections/' + random_file_name,
                 code=code, 
                 corp_name=corp_name, 
                 period_type=period_type,
                 reg_date=reg_date,
                 market_type=market_type, 
-                reporter=reporter
+                reporter=reporter,
+                title=title
             )
             result = dep.parse_excel_file_data()
+            try:
+                os.remove('./datacollections/' + random_file_name)
+            except Exception:
+                pass
+            return result
         except Exception as e:
             error_message = (
                 f"Error while parsing excel {str(e)} {report_link} {link}"
             )
             logger.error(error_message)
             try:
-                os.remove('./' + random_file_name)
+                os.remove('./datacollections/' + random_file_name)
             except Exception:
                 pass
             raise ValueError(error_message)
-        try:
-            os.remove('./' + random_file_name)
-        except Exception:
-            pass
-        return result
 
     def return_update_dict(self, default_dict, update_result):
         base = copy.deepcopy(default_dict)
@@ -447,8 +436,6 @@ class DartDataHandler(DataHandlerClass):
     ):
         total_result = []
         failed_result = []
-        is_connected_data_made = False
-        is_normal_data_made = False
         default_dict = {
             'report_link': link,
             'code': code,
@@ -460,24 +447,15 @@ class DartDataHandler(DataHandlerClass):
         try:
             soup = await self.return_async_get_soup(link)
             if not soup:
+                failed_info = self.return_update_dict(default_dict, {})
+                failed_result.append(failed_info)
                 logger.error(f"Error occured while no soup {link}")
-                return []
+                return [], failed_result
         except ValueError as ve:
             logger.error(f"Error occured while return soup {link} {str(ve)}")
-            return []
-        try:
-            stock_count_link = ""
-            stock_count_link = parse_stockcount_section_link(soup)
-            stockcount_soup = await self.return_async_get_soup(
-                stock_count_link
-            )
-            stock_count_data = return_stockcount_data(link, stockcount_soup)
-        except Exception as e: 
-            logger.error(
-                f"Error while parsing stock count {link} {stock_count_link} "
-                + str(e)
-            )
-            stock_count_data = {}
+            failed_info = self.return_update_dict(default_dict, {})
+            failed_result.append(failed_info)
+            return [], failed_result
 
         try:
             result = await self.return_excel_table_data(
@@ -491,18 +469,9 @@ class DartDataHandler(DataHandlerClass):
                 period_type=period_type,
                 reporter=reporter
             )
-            for r in result:
-                r.update(stock_count_data)
-            if len(result) == 2:
-                return result, failed_result
-            if len(result) == 1:
-                total_result.append(result[0])
-                if result[0]['report_type'] == NORMAL_FINANCIAL_STATEMENTS:
-                    is_normal_data_made = True
-                else:
-                    is_connected_data_made = True
-        except exception_utils.ExpectedError:
-            pass
+            return result, failed_result
+        except ValueError as ve:
+            logger.error(str(ve) + " " + link)
         except Exception as e:
             logger.error(
                 f"Unexpected Error parsing excel data {str(e)} {link}"
@@ -511,10 +480,8 @@ class DartDataHandler(DataHandlerClass):
         try:
             link_data = self.parse_financial_section_link(soup)
         except exception_utils.ReportLinkParseError:
-            if len(total_result) == 0:
-                logger.error(f"No data exists in link {link}")
             logger.error(
-                f"Error occured while return financial section {link} "
+                f"Error occured while return financial section {link}"
             )
             failed_info = self.return_update_dict(default_dict, {})
             failed_result.append(failed_info)
@@ -522,16 +489,6 @@ class DartDataHandler(DataHandlerClass):
 
         normal_table_link = link_data.get('link_fs')
         connected_table_link = link_data.get('link_connected_fs')
-        if not normal_table_link:
-            logger.error(
-                "Parse financial section job "
-                f"cannot get normal table link {link}"
-            )
-            if len(total_result) == 0:
-                logger.error(f"No data exists in link {link}")
-            failed_info = self.return_update_dict(default_dict, {})
-            return total_result, failed_result
-
         # 연결재무재표가 일반재무재표와 같은페이지에있는경우 이를확인시킨다.
         is_connected_inside_normal = False
         if not connected_table_link:
@@ -539,7 +496,7 @@ class DartDataHandler(DataHandlerClass):
             is_connected_inside_normal = True
 
         get_table_tasks = []
-        if normal_table_link and not is_normal_data_made:
+        if normal_table_link:
             get_table_tasks.append(
                 (
                     NORMAL_FINANCIAL_STATEMENTS,
@@ -547,7 +504,7 @@ class DartDataHandler(DataHandlerClass):
                     self.return_async_get_soup(normal_table_link)
                 )
             )  
-        if connected_table_link and not is_connected_data_made:
+        if connected_table_link:
             get_table_tasks.append(
                 (
                     CONNECTED_FINANCIAL_STATEMENTS,
@@ -557,26 +514,46 @@ class DartDataHandler(DataHandlerClass):
             )
         # Excel parsing 이후 table 결과값이 존재하지 않으면 결과 반환
         if not get_table_tasks:
-            if len(total_result) == 1:
-                failed_dict = (
-                    {'table_link': normal_table_link}
-                    if is_connected_data_made
-                    else {'table_link': connected_table_link}
-                )
+            if normal_table_link:
                 failed_info = self.return_update_dict(
-                    default_dict, failed_dict
+                    default_dict, 
+                    {
+                        'table_link': normal_table_link, 
+                        'report_type': NORMAL_FINANCIAL_STATEMENTS
+                    }
                 )
                 failed_result.append(failed_info)
-                return total_result, failed_result   
-            else:
-                failed_info = self.return_update_dict(default_dict, {})
+            if connected_table_link:
+                failed_info = self.return_update_dict(
+                    default_dict, 
+                    {
+                        'table_link': connected_table_link, 
+                        'report_type': CONNECTED_FINANCIAL_STATEMENTS
+                    }
+                )
                 failed_result.append(failed_info)
-                return total_result, failed_result   
+
+            return total_result, failed_result   
 
         soup_list = await asyncio.gather(
             *[x[2] for x in get_table_tasks], return_exceptions=True
         )
         for idx, soup in enumerate(soup_list):
+            if isinstance(soup, Exception):
+                report_type = get_table_tasks[idx][0]
+                table_link = get_table_tasks[idx][1]
+                failed_dict = {
+                    'report_link': link,
+                    'table_link': table_link,
+                    'report_type': report_type
+                }
+                failed_info = self.return_update_dict(
+                    default_dict,
+                    failed_dict
+                )
+                failed_result.append(failed_info)
+                continue
+
             try:
                 report_type = get_table_tasks[idx][0]
                 table_link = get_table_tasks[idx][1]
@@ -599,7 +576,6 @@ class DartDataHandler(DataHandlerClass):
                     result = drh.parse_report_link(
                         is_connected_inside_normal=False
                     )
-                result.update(stock_count_data)
                 total_result.append(result)
             except exception_utils.ExpectedError:
                 failed_dict = {
@@ -612,7 +588,6 @@ class DartDataHandler(DataHandlerClass):
                     failed_dict
                 )
                 failed_result.append(failed_info)
-                pass
             except Exception as e:
                 logger.error(
                     f"Unexpected error occured while parsing table "
@@ -628,7 +603,22 @@ class DartDataHandler(DataHandlerClass):
                     default_dict, failed_dict
                 )
                 failed_result.append(failed_info)
-        return total_result, failed_result
+
+        # check only connected table conditions
+        if len(total_result) == 2:
+            final_result = []
+            if (
+                total_result[0]['book_value'] == total_result[1]['book_value']
+                and 
+                total_result[0]['sales'] == total_result[1]['sales']
+            ):
+                for result in total_result:
+                    if result['report_type'] == CONNECTED_FINANCIAL_STATEMENTS:
+                        final_result.append(result)
+        else:
+            final_result = total_result
+
+        return final_result, failed_result
 
     def return_company_report_link_list(
         self, code, company_name, report_type, start_date=None
@@ -647,17 +637,6 @@ class DartDataHandler(DataHandlerClass):
                     start_date=start_date,
                     textCrpCik=None
                 )
-                if not result:
-                    newcode = ''.zfill(6-len(str(code))) + str(code)
-                    result = self.parse_linklist_data(
-                        newcode,
-                        currentPage,
-                        report_type,
-                        company_name,
-                        start_date=start_date,
-                        textCrpCik=None,
-                        original_code=code
-                    )
                 currentPage += 1
                 if not result:
                     break 
@@ -720,6 +699,7 @@ class DartDataHandler(DataHandlerClass):
             )
             logger.error(errorMessage)
             raise ValueError(errorMessage)
+        print(len(report_list), 'report link')
         data_list = self.return_multiple_link_results(report_list)
         return data_list
 
@@ -757,4 +737,4 @@ class DartDataHandler(DataHandlerClass):
             data = {}
             data['link_connected_fs'] = link_connected_fs 
             data['link_fs'] = link_fs 
-            return data 
+            return data

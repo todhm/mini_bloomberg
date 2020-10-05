@@ -37,6 +37,7 @@ class DartExcelParser(object):
         period_type: str,
         reg_date: str, 
         market_type: str,
+        title: str,
         **kwargs
     ):
         self.excel_link = excel_link 
@@ -48,7 +49,8 @@ class DartExcelParser(object):
             'corp_name': corp_name, 
             'period_type': period_type,
             'reg_date': reg_date, 
-            'market_type': market_type
+            'market_type': market_type,
+            'title': title
         }
         self.fname = fname
         wb = xlrd.open_workbook(fname)

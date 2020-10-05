@@ -7,7 +7,7 @@ def reset_ip_address():
     ip_addr = socket.gethostbyname('torproxy')
     with Controller.from_port(
         address=ip_addr,
-        port=9051
+        port=9200
     ) as controller:
         controller.authenticate()
         controller.signal(Signal.NEWNYM)

@@ -31,11 +31,13 @@ services:
       - postgres-data:/var/lib/postgresql/data
 
   torproxy:
-    image: dockage/tor-privoxy:latest
+    image: u1234x1234/torpool:1.0.2
+    command: ['--Tors', '150', '--NewCircuitPeriod', '240', '--MaxCircuitDirtiness', '240']
+    container_name: torpool
     ports:
-      - "9050:9050" # Tor proxy
-      - "9051:9051" # Tor control port
-      - "8118:8118" # Privoxy
+      - "9200:9200" #Socks
+      - "9300:9300" #Http
+      - "9500:9500" #Admin page
     networks:
       - backend
 
@@ -62,7 +64,7 @@ services:
       - backend
       - message
       - logging
-      
+
   fpgunicorn:
     image: fidelkang/fpcrawler
     volumes:
@@ -71,7 +73,7 @@ services:
       - ./fp_types:/usr/src/app/fp_types
     command:  gunicorn -b 0.0.0.0:8000 --log-level=debug --workers=20 -t 200000  wsgi:app
     ports:
-      - 5000:5000
+      - 8000:8000
     env_file:
       - ./envfiles/.base.env
       - ./envfiles/.secret.env

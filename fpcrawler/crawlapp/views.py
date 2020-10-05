@@ -14,8 +14,8 @@ logger = logging.getLogger(__name__)
 
 @crawlapp_api.route('/', methods=["GET"])
 def hello_world():
-  
-    r = requests.get('http://ifconfig.me/ip')
+    proxies = {'http': 'http:torproxy:9300'}
+    r = requests.get('http://ifconfig.me/ip', proxies=proxies)
     return 'You connected from IP address: ' + r.text
 
     

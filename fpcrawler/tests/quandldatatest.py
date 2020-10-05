@@ -5,6 +5,7 @@ from datahandler.quandldatahandler import QuandlDataHandler
 from tests.basetest import BaseTest
 import os 
 
+
 class QuandlDataTest(BaseTest):
 
     def setUp(self):

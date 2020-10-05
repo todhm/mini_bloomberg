@@ -2,8 +2,7 @@ from datetime import datetime as dt
 import os 
 import json
 from random import randint
-import unittest
-from unittest.mock import patch
+import pytest
 from darthandler.dartdatahandler import DartDataHandler
 from darthandler import dartdataparsehandler
 from darthandler import dartdriverparsinghandler
@@ -17,7 +16,25 @@ from fp_types import (
 from utils.api_utils import return_sync_get_soup
 from utils.exception_utils import NotableError
 from utils.class_utils import DataHandlerClass, BaseTest
-    
+
+
+@pytest.fixture(scope="module")
+def browser():
+    # ...
+    # 브라우저를 받아오는 부분
+    # driver는 webDriver이다.
+    ddh = DartDataHandler
+    yield ddh
+
+def check_returned_report_link_data(data_list):
+    for data in data_list:
+        assert 'http' in data['link']
+        assert data['code'].isdigit()
+        assert data['market_type']
+        assert data['market_type']
+        assert type(data['reg_date']) is str
+        date = dt.strptime(data['reg_date'], '%Y-%m-%d')
+        assert type(date) is dt
 
 class FinanceTest(BaseTest, DataHandlerClass):
 
@@ -28,38 +45,7 @@ class FinanceTest(BaseTest, DataHandlerClass):
     def tearDown(self):
         super().tearDown()
         
-    def check_return_result(self, result_list, company_name="", code=""):
-        data_field_list = [
-            'cashflow_from_operation',
-            'operational_income',
-            'gross_profit',
-            'sales',
-            'extra_ordinary_profit',
-            'extra_ordinary_loss',
-            'net_income',
-            'total_assets',
-            'longterm_debt',
-            'current_assets',
-            'current_debt'
-        ]
-        
-        self.assertTrue(len(result_list) > 0)
-        for result in result_list:
-            for key in data_field_list:
-                self.assertTrue(type(result[key]), float)
-            if company_name:
-                self.assertEqual(result['corp_name'], company_name)
-                self.assertEqual(result['code'], code)
 
-    def check_returned_report_link_data(self, data_list):
-        for data in data_list:
-            self.assertTrue('http' in data['link'])
-            self.assertTrue(data['code'].isdigit())
-            self.assertTrue(data['market_type'])
-            self.assertTrue(data['market_type'])
-            self.assertEqual(type(data['reg_date']), str)
-            date = dt.strptime(data['reg_date'], '%Y-%m-%d')
-            self.assertEqual(type(date), dt)
 
     def check_finance_table_dictionary(self, financial_table_data):
         data_key_list = ['balance_sheet', 'cashflow', 'income_statement']  
@@ -651,7 +637,7 @@ class FinanceTest(BaseTest, DataHandlerClass):
 
     def test_shinhan_report_parsing(self):
         url = 'http://dart.fss.or.kr/dsaf001/main.do?rcpNo=20121026000269'
-        result_list,failed_result = self._run(self.ddh.return_reportlink_data(link=url))
+        result_list, failed_result = self._run(self.ddh.return_reportlink_data(link=url))
         self.assertEqual(len(result_list),2)
         for result in result_list:
             if result.get("report_type") == 'NORMAL_FINANCIAL_STATEMENTS':
@@ -667,21 +653,17 @@ class FinanceTest(BaseTest, DataHandlerClass):
                 self.assertEqual(result['net_income'], 3272633000000)
                 self.assertEqual(result['book_value'], 26858805000000)
 
-    def test_report_error_case(self):
-        url = 'http://dart.fss.or.kr/dsaf001/main.do?rcpNo=20110516000559'
-        result_list,failed_result = self._run(self.ddh.return_reportlink_data(link=url))
-        self.assertEqual(len(result_list),2)
-
-        # for result in result_list:
-        #     if result.get("report_type") == 'NORMAL_FINANCIAL_STATEMENTS':
-        #         self.assertEqual(result['cashflow_from_operation'], 1343507000000)    
-        #         self.assertEqual(result['total_assets'], 30844250000000)
-        #         self.assertEqual(result['operational_income'],1679986000000)
-        #         self.assertEqual(result['net_income'], 1672908000000)
-        #         self.assertEqual(result['book_value'],19430807000000)
-        #     else:
-        #         self.assertEqual(result['cashflow_from_operation'], 1343507000000)    
-        #         self.assertEqual(result['total_assets'], 288041796000000)
-        #         self.assertEqual(result['operational_income'], 4134772000000)
-        #         self.assertEqual(result['net_income'], 3272633000000)
-        #         self.assertEqual(result['book_value'], 26858805000000)
+    def test_failed_flower_firms(self):
+        url = 'http://dart.fss.or.kr/dsaf001/main.do?rcpNo=20100503001219'
+        result_list, failed_result = self._run(self.ddh.return_reportlink_data(link=url))
+        self.assertEqual(len(result_list), 1)
+        result = result_list[0]
+        self.assertEqual(result['current_assets'], 350604075195)
+        self.assertEqual(result['cashflow_from_operation'],127791674884)    
+        self.assertEqual(result['total_assets'], 751085360770)
+        self.assertEqual(result['longterm_debt'], 45977870766)
+        self.assertEqual(result['current_debt'], 205753622377)
+        self.assertEqual(result['sales'], 718165366951)
+        self.assertEqual(result['operational_income'], 64264962312)
+        self.assertEqual(result['net_income'], 54845066144)
+        self.assertEqual(result['book_value'], 499353867627)
