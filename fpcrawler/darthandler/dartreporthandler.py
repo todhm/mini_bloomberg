@@ -94,10 +94,11 @@ class DartReportHandler(object):
                 )
                 self.result.update(cashflow_result)
             except exception_utils.TableStyleError:
-                logger.error(
+                message = (
                     f"Unexpected cashflow table {self.link} {self.table_link}"
                 )
-                raise exception_utils.ExpectedError
+                logger.error(message)
+                raise exception_utils.ExpectedError(message)
         try:
             if (
                 table_dict.get('income_statement') and 
@@ -113,11 +114,12 @@ class DartReportHandler(object):
                 )
                 self.result.update(incomestatement_result)
         except exception_utils.TableStyleError:
-            logger.error(
+            message = (
                 "Unexpected income statement table"
                 f"{self.link} {self.table_link}"
             )
-            raise exception_utils.ExpectedError
+            logger.error(message)
+            raise exception_utils.ExpectedError(message)
         try:
             if (
                 table_dict.get('balance_sheet') and 
@@ -133,10 +135,11 @@ class DartReportHandler(object):
                 )
                 self.result.update(balachesheet_result)
         except exception_utils.TableStyleError:
-            logger.error(
+            message = (
                 f"Unexpected balancesheet table {self.link} {self.table_link}"
             )
-            raise exception_utils.ExpectedError
+            logger.error(message)
+            raise exception_utils.ExpectedError(message)
         if table_dict.get('summary') and table_dict['summary']['style'] in [
                 TABLE_CASE_FIRST, TABLE_CASE_WITH_NOTE
         ]:
@@ -204,7 +207,7 @@ class DartReportHandler(object):
                         current_working_capital - last_year_working_capital
                     )
                 except Exception as e:
-                    print(e)
+                    print('Error occur while calc working capital', e)
                     working_capital_change = 0
                 self.result['cashflow_from_operation'] = (
                     operational_income + 
@@ -214,12 +217,13 @@ class DartReportHandler(object):
                 )
                 self.result['direct_cashflow'] = False
             except Exception as e:
-                logger.error(
+                message = (
                     f"Error occur while parsing no cashtable data {self.link} "
                     f"{self.table_link} " 
                     + str(e)
                 )
-                raise exception_utils.ExpectedError
+                logger.error(message)
+                raise exception_utils.ExpectedError(message)
         cash_remained_keys = return_remained_petovski_data(
             self.result, petovski_cash_dict
         )
@@ -236,8 +240,8 @@ class DartReportHandler(object):
             or incomestatement_remained_keys
         ):
             driver_case_list = [
-                    TABLE_CASE_SECOND,
-                    TABLE_CASE_THIRD
+                TABLE_CASE_SECOND,
+                TABLE_CASE_THIRD
             ]
             
             if (

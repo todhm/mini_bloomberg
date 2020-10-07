@@ -73,7 +73,6 @@ class DartDataHandler(DataHandlerClass):
                     soup = BeautifulSoup(result_string, 'html.parser')
                     return soup
         except Exception as e:
-            print(e)
             raise ValueError(f"Error making async requests {url}" + str(e))
 
     def parse_linklist_data(
@@ -532,14 +531,19 @@ class DartDataHandler(DataHandlerClass):
                     }
                 )
                 failed_result.append(failed_info)
-
+            logger.error("No table get tasks " + link)
             return total_result, failed_result   
 
         soup_list = await asyncio.gather(
             *[x[2] for x in get_table_tasks], return_exceptions=True
         )
+        print(len(soup_list), "Soup list")
         for idx, soup in enumerate(soup_list):
             if isinstance(soup, Exception):
+                logger.error(
+                   "Error occured while making table requests "
+                   f"{link} {str(soup)}"
+                )
                 report_type = get_table_tasks[idx][0]
                 table_link = get_table_tasks[idx][1]
                 failed_dict = {
@@ -588,6 +592,7 @@ class DartDataHandler(DataHandlerClass):
                     failed_dict
                 )
                 failed_result.append(failed_info)
+                continue
             except Exception as e:
                 logger.error(
                     f"Unexpected error occured while parsing table "
@@ -603,22 +608,26 @@ class DartDataHandler(DataHandlerClass):
                     default_dict, failed_dict
                 )
                 failed_result.append(failed_info)
+                continue
 
         # check only connected table conditions
         if len(total_result) == 2:
-            final_result = []
             if (
                 total_result[0]['book_value'] == total_result[1]['book_value']
                 and 
                 total_result[0]['sales'] == total_result[1]['sales']
             ):
-                for result in total_result:
-                    if result['report_type'] == CONNECTED_FINANCIAL_STATEMENTS:
-                        final_result.append(result)
-        else:
-            final_result = total_result
-
-        return final_result, failed_result
+                connected_filter = list(
+                    filter(
+                        lambda x: x.get('report_type') 
+                        == CONNECTED_FINANCIAL_STATEMENTS, 
+                        total_result
+                    )
+                )
+                if connected_filter:
+                    total_result = connected_filter
+  
+        return total_result, failed_result
 
     def return_company_report_link_list(
         self, code, company_name, report_type, start_date=None

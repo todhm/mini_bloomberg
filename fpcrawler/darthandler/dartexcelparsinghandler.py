@@ -254,7 +254,7 @@ class DartExcelParser(object):
                     is_connected = '연결' in sheet_name
                     table_key = (
                         'income_statement' + '_connected' 
-                        if is_connected else table_name
+                        if is_connected else 'income_statement'
                     )
                     data[table_key] = idx
         return data
