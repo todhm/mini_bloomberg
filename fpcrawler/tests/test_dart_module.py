@@ -7,7 +7,6 @@ import os
 from darthandler import dartdataparsehandler
 from darthandler.dartdatahandler import DartDataHandler
 from darthandler.dartexcelparsinghandler import DartExcelParser
-from darthandler.dartdriverparsinghandler import return_driver_report_data
 from darthandler import dartdriverparsinghandler
 from darthandler.dartreporthandler import DartReportHandler
 from fp_types import (
@@ -675,7 +674,10 @@ async def test_failed_flower_firms(ddh):
 
 
 def test_excel_parsing_error_case(ddh):
-    url = 'http://dart.fss.or.kr/pdf/download/excel.do?rcp_no=20150331003586&dcm_no=4559882&lang=ko'
+    url = (
+        'http://dart.fss.or.kr/pdf/download/excel.do'
+        '?rcp_no=20150331003586&dcm_no=4559882&lang=ko'
+    )
     random_file_name = ''.join(
         random.choice(string.ascii_uppercase + string.digits) 
         for _ in range(10)

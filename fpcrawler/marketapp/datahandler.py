@@ -1,6 +1,5 @@
 import csv
 from io import BytesIO, TextIOWrapper
-import asyncio
 import aiohttp
 
 
@@ -96,16 +95,3 @@ async def return_report_data(datestring):
                 except Exception as e: 
                     raise ValueError("Error while  donwloads" + str(e))
             return data_list
-
-
-def return_data_list(datestring_list):
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    async_list = [
-        return_report_data(datestring)
-        for datestring in datestring_list
-    ]
-    all_results = asyncio.gather(*async_list)
-    result_list = loop.run_until_complete(all_results)
-    loop.close()
-    return result_list

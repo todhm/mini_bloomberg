@@ -1,17 +1,14 @@
 from airflow import DAG
-from airflow.operators.bash_operator import BashOperator
 from airflow.operators.python_operator import PythonOperator
 from task_functions import handle_dart_jobs
 from datetime import datetime, timedelta
-import pprint
-import time 
 import pendulum
 
 local_tz = pendulum.timezone("Asia/Seoul")
-thisYear = datetime.now().year -1
+thisYear = datetime.now().year - 1
 thisMonth = datetime.now().month
 thisDate = datetime.now().day
-thisDate = 1 if thisDate ==31 else thisDate
+thisDate = 1 if thisDate == 31 else thisDate
 
 default_args = {
     'owner': 'Fidel',
@@ -22,8 +19,8 @@ default_args = {
     'email_on_retry': True,
     'retries': 1,
     'retry_delay': timedelta(seconds=5),
-    'wait_for_downstream':False,
-    'provide_context':True
+    'wait_for_downstream': False,
+    'provide_context': True
 }
 
 dag = DAG(

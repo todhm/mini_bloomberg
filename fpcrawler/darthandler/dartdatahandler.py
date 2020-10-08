@@ -38,7 +38,7 @@ import fp_types
 logger = logging.getLogger()
 
 
-class DartDataHandler(DataHandlerClass):
+class DartDataHandler(object):
 
     def __init__(self, *args, **kwargs):
         user_agent = (
@@ -285,16 +285,18 @@ class DartDataHandler(DataHandlerClass):
                 currentPage += 1
         return final_result  
     
-    def return_multiple_link_results(self, link_list, jump=30):
+    async def return_multiple_link_results(self, link_list, jump=30):
         success_list = []
         failed_list = []
         for i in range(0, len(link_list), jump):
             end = i + jump
             try:
-                result = self.return_async_func_results(
-                    'return_reportlink_data', 
-                    link_list[i:end], 
-                    use_callback=False
+                async_list = [
+                    self.return_reportlink_data(**link_data) for link_data in 
+                    link_list[i:end]
+                ]
+                result = await asyncio.gather(
+                    *async_list, return_exceptions=True
                 )
             except Exception as e:
                 logger.error("Error while making multiple requests " + str(e))
@@ -656,7 +658,7 @@ class DartDataHandler(DataHandlerClass):
 
         return final_results
 
-    def return_company_report_data_list(
+    async def return_company_report_data_list(
             self, 
             code: str, 
             company: str, 
@@ -709,7 +711,7 @@ class DartDataHandler(DataHandlerClass):
             logger.error(errorMessage)
             raise ValueError(errorMessage)
         print(len(report_list), 'report link')
-        data_list = self.return_multiple_link_results(report_list)
+        data_list = await self.return_multiple_link_results(report_list)
         return data_list
 
     def parse_financial_section_link(self, soup: BeautifulSoup):

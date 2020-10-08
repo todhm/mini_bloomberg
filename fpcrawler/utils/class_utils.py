@@ -7,7 +7,6 @@ from aiohttp import ClientSession, ClientTimeout, TCPConnector
 from utils.log_utils import log_factory
 from fp_types.errors import NO_DATA, REQUEST_ERROR
 from collections.abc import Iterable
-from application import create_app
 
 
 
@@ -17,28 +16,6 @@ class SingletonMeta(type):
         if cls not in cls._instance_registry:    # check, if the class has already been instantiated
             cls._instance_registry[cls] = super().__call__(*args, **kwargs)
         return cls._instance_registry[cls]
-
-
-
-class BaseTest(unittest.TestCase):
-    def create_app(self):
-        app = create_app()
-        app.config.from_object('config.TestConfig')
-        return app
-
-
-    def setUp(self):
-        self.app = self.create_app()
-        self.app_context = self.app.app_context()
-        self.app_context.push()
-        self.app.config['TESTING'] = True
-        self.client = self.app.test_client()
-
-
-    
-    def tearDown(self):
-        self.app_context.pop()
-
     
 
 class DataHandlerClass: 
