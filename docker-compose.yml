@@ -49,7 +49,6 @@ services:
     volumes:
       - './fpcrawler:/usr/src/app'
       - ./datacollections:/usr/src/app/datacollections
-      - ./fp_types:/usr/src/app/fp_types
     command:  uvicorn main:app --reload --host 0.0.0.0 --port 5000 --log-level debug
     ports:
       - 5000:5000
@@ -70,10 +69,9 @@ services:
     volumes:
       - './fpcrawler:/usr/src/app'
       - ./datacollections:/usr/src/app/datacollections
-      - ./fp_types:/usr/src/app/fp_types
-    command:  gunicorn -b 0.0.0.0:8000 --log-level=debug --workers=20 -t 200000  wsgi:app
+    command:  gunicorn -b 0.0.0.0:9000 --log-level=debug --workers=6 -k uvicorn.workers.UvicornWorker -t 200000  main:app
     ports:
-      - 8000:8000
+      - 9000:9000
     env_file:
       - ./envfiles/.base.env
       - ./envfiles/.secret.env
@@ -95,8 +93,7 @@ services:
       - './connector:/usr/src/app'
       - ./datacollections:/usr/src/app/datacollections
       - ./marcap/data:/usr/src/app/datacollections/data
-      - ./fp_types:/usr/src/app/fp_types
-    command:  python manage.py run -h 0.0.0.0 -p 8000
+    command:  uvicorn main:app --reload --host 0.0.0.0 --port 8000 --log-level debug
     ports:
       - 8000:8000
     env_file:
@@ -108,21 +105,43 @@ services:
       - fp_mongo
     networks:
       - backend
-
+      - message
+      
+  connector_worker:
+    image: fidelkang/connector
+    working_dir: /usr/src/app
+    volumes:
+      - ./connector:/usr/src/app
+      - ./datacollections:/usr/src/app/datacollections
+    command: celery -A celery_app:celery_app worker  --loglevel=INFO --concurrency=3
+    env_file:
+      - ./envfiles/.base.env
+      - ./envfiles/.secret.env
+      - ./envfiles/.mongo_env.env
+      - ./envfiles/.redis.env
+    networks:
+      - backend
+      - message
+    depends_on:
+      - fp_redis
+      - connector
+    
   fp_airflow:
-    image: airflow
+    image: fidelkang/fp_airflow
     container_name: fp_airflow
     build:
       context: ./fp_airflow
     depends_on:
       - fp_postgres
+      - fpgunicorn
+      - fp_mongo
     env_file:
       - ./envfiles/.airflow_development.env
+      - ./envfiles/.service_map.env
     volumes:
       - ./fp_airflow:/usr/local/airflow/dags
       - ./fp_airflow/requirements.txt:/requirements.txt
       - ./datacollections:/usr/local/airflow/dags/datacollections
-      - ./fp_types:/usr/local/airflow/dags/fp_types
     ports:
         - "8080:8080"
     command: webserver

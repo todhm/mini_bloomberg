@@ -262,7 +262,7 @@ def parse_finance_table(
     second_style_table_list = scrapyResponse.xpath(
         f"//p[re:match(text(), '{re_data}')]"
         "/following-sibling::p[1]/following-sibling"
-        f"::table[1]//*[re:match(text(), '{first_re_data}')]"
+        f"::table[1]//*re:match(text(), '{first_re_data}')[re:match(text(), '{first_re_data}')]"
         "/ancestor::table/preceding-sibling::p[1]"
     )
     if second_style_table_list:

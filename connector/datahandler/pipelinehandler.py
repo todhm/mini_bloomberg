@@ -82,6 +82,7 @@ def prepare_report_data(df, eq_df):
     )
     return df
 
+
 def create_f_score_data(joined_df):
     joined_df['book_to_market'] = joined_df['book_value']\
         / joined_df['Marcap']

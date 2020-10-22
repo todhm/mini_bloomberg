@@ -1,7 +1,8 @@
-
+import pytest
 from tests.test_app import client
 
 
+@pytest.mark.markettest
 def test_market_data_api():
     date_string_list = ['20200518', '20200504', '202005019']
     response = client.post(
@@ -14,6 +15,7 @@ def test_market_data_api():
     first_ten_data = data_list[0][:10]
     for data in first_ten_data:
         assert(type(data['Code']) == str)
+        assert(data['Code'].startswith('00') is True)
         assert(type(data['Name']) == str)
         assert(type(data['Close']) == float)
         assert(type(data['Changes']) == float)

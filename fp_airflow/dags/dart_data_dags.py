@@ -53,7 +53,7 @@ for i in range(total_number):
         provide_context=True,
         op_kwargs={
          'start_idx': i,
-         'total_task_counts': total_number,
+         'total_task_count': total_number,
          'db_name': 'fp_data'
         },
     )

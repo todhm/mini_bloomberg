@@ -21,6 +21,7 @@ googletrans==2.3.0
 gspread==3.1.0
 gunicorn==19.9.0
 h11==0.11.0
+httptools==0.1.1
 hyperlink==20.0.1
 idna==2.8
 importlib-metadata==2.0.0
@@ -77,6 +78,7 @@ Twisted==20.3.0
 typing-extensions==3.7.4.3
 urllib3==1.25.10
 uvicorn==0.12.1
+uvloop==0.14.0
 w3lib==1.22.0
 Werkzeug==1.0.1
 workalendar==8.1.0

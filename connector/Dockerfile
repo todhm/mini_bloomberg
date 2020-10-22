@@ -5,7 +5,14 @@ WORKDIR /usr/src/app
 
 COPY ./requirements.txt /usr/src/app/requirements.txt
 
-# install selenium
+RUN apt-get update -y && \
+ 	apt-get install -y make && \
+ 	apt-get install -y libffi-dev gcc && \
+ 	# for swagger
+ 	apt-get install -y curl && \
+ 	# for postgres driver
+ 	apt-get install -y libpq-dev
+
 RUN pip install -r requirements.txt
 COPY ./requirements.txt /usr/src/app/requirements.txt
 COPY . /usr/src/app

@@ -10,7 +10,6 @@ import requests
 import asyncio
 from bs4 import BeautifulSoup
 from utils import exception_utils
-from utils.class_utils import DataHandlerClass    
 from aiohttp import (
     ClientSession,
 )

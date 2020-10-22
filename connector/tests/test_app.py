@@ -4,7 +4,7 @@ from settings import TestSettings
 from functools import lru_cache
 
 
-@lru_cache()
+@lru_cache
 def get_settings_override():
     return TestSettings()
 

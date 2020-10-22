@@ -32,7 +32,7 @@ def prepare_company_report_list(
 def insert_company_data_list(
     db_name='testdb', 
     start_idx=0,
-    total_task_counts=1,
+    total_task_count=1,
     **kwargs
 ):
     execution_date = kwargs.get('execution_date')
@@ -41,15 +41,16 @@ def insert_company_data_list(
     print("current timestamp", ts)
     # report_url = 'https://testcrawler-n7je6n7fnq-an.a.run.app/company_report_data_list'
     # eq_url = 'https://testcrawler-n7je6n7fnq-an.a.run.app/return_eq_api'
-    report_url = 'http://fpgunicorn:8000/company_report_data_list'
-    eq_url = 'http://fpgunicorn:8000/return_eq_api'
+    link_url = os.environ.get("FPCRAWLER_URL")
+    report_url = f'{link_url}/company_report_data_list'
+    eq_url = f'{link_url}/return_eq_api'
     mongo_uri = os.environ.get("MONGO_URI")
     client = MongoClient(mongo_uri)
     db = client[db_name]
     data_list = CompanyReport.return_company_data(
         db.company_list, 
         start_idx, 
-        total_task_counts
+        total_task_count
     )
     for idx, data in enumerate(data_list):
         print(idx, data['company'])
@@ -108,24 +109,23 @@ def insert_company_data_list(
 def insert_continuous_company_report_list(
     db_name='testdb', 
     start_idx=0,
-    total_task_counts=1,
+    total_task_count=1,
     **kwargs
 ):
     execution_date = kwargs.get('execution_date')
     ts = execution_date.timestamp()
     ts = int(ts)
     print("current timestamp", ts)
-    # report_url = 'https://testcrawler-n7je6n7fnq-an.a.run.app/company_report_data_list'
-    # eq_url = 'https://testcrawler-n7je6n7fnq-an.a.run.app/return_eq_api'
-    report_url = 'http://fpgunicorn:8000/company_report_data_list'
-    eq_url = 'http://fpgunicorn:8000/return_eq_api'
+    link_url = os.environ.get("FPCRAWLER_URL")
+    report_url = f'{link_url}/company_report_data_list'
+    eq_url = f'{link_url}/return_eq_api'
     mongo_uri = os.environ.get("MONGO_URI")
     client = MongoClient(mongo_uri)
     db = client[db_name]
     data_list = CompanyReport.return_company_data(
         db.company_list, 
         start_idx, 
-        total_task_counts
+        total_task_count
     )
     for idx, data in enumerate(data_list):
         print(idx, data['company'])

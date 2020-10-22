@@ -2,7 +2,6 @@ from datetime import datetime as dt
 from flask.cli import AppGroup
 from mongo_models import models
 import pandas as pd
-import fp_types
 from datahandler.marketdatahandler import MarketDataHandler
 from datahandler import reportdatahandler
 from datahandler.pipelinehandler import PipelineDataHandler
@@ -30,7 +29,9 @@ def create_report_data():
     df = pd.read_excel('./datacollections/korean_company_list.xlsx')
     df = df.fillna('')
     df = df.sort_values('register_date', ascending=True)
-    df['register_date'] = df['register_date'].apply(lambda x: x.strftime('%Y%m%d'))
+    df['register_date'] = df['register_date'].apply(
+        lambda x: x.strftime('%Y%m%d')
+    )
     data_list = df.to_dict('records')
     reportdatahandler.insert_company_data_list(data_list, db_name='fp_data')
 
@@ -47,12 +48,13 @@ def fetch_best_data():
         print(data['f_sum'], data['code'], data['book_to_market'])
 
 
-
 @index_cli.command("prepare_random_list")
-def create_report_data():
+def prepare_random_list():
     df = pd.read_excel('./datacollections/korean_company_list.xlsx')
     df = df.fillna('')
     df = df.sort_values('register_date', ascending=True)
-    df['register_date'] = df['register_date'].apply(lambda x: x.strftime('%Y%m%d'))
+    df['register_date'] = df['register_date'].apply(
+        lambda x: x.strftime('%Y%m%d')
+    )
     data_list = df.to_dict('records')
-    print(random.sample(data_list,10))
+    print(random.sample(data_list, 10))

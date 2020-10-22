@@ -1,8 +1,9 @@
 from math import ceil
 from dataclasses import dataclass
 from datetime import datetime as dt
-from dataclasses import asdict, fields
-
+from dataclasses import asdict, fields, field
+from pymongo.database import Database
+from typing import List
 
 
 @dataclass 
@@ -36,12 +37,11 @@ class CompanyReport:
     def to_json(self):
         return asdict(self)
         
-
     @classmethod
-    def return_company_data(cls, db_col, start_idx, total_task_counts):
+    def return_company_data(cls, db_col, start_idx, total_task_count):
         company_counts = db_col.count_documents({})
         if start_idx >= 0:
-            single_page_company_counts = ceil(company_counts/total_task_counts)
+            single_page_company_counts = ceil(company_counts/total_task_count)
         else:
             single_page_company_counts = company_counts
         page = start_idx + 1
@@ -65,11 +65,33 @@ class CompanyReport:
         return data_list
             
 
+@dataclass 
+class TaskArgumentsList:
+    timestamp: int = None
+    dataList: List = field(default_factory=list)
+    taskName: str = ""
 
+    def save(self, db: Database):
+        save_data = asdict(self)
+        db.airflow_task_list.insert_one(save_data)
 
-
-
-
+    @classmethod
+    def fetch_current_args(
+        cls,
+        db: Database, 
+        taskName: str, 
+        timestamp: int,
+        currentIdx: int, 
+        totalTaskLength: int
+    ):
+        task_argument_doc = db.airflow_task_list.find_one({
+            'taskName': taskName, 
+            "timestamp": timestamp
+        })
+        data_list = task_argument_doc['dataList']
+        each_length = ceil(len(data_list) / totalTaskLength)
+        start = each_length * currentIdx
+        end = each_length * (currentIdx + 1)
+        return data_list[start:end]
 
             
-
