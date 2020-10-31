@@ -44,6 +44,7 @@ def prepare_market_tasks(
         taskName=fp_types.MARKET_DATA_FETCH
     )
     ta.save(db)
+    client.close()
 
 
 def create_market_data_tasks(

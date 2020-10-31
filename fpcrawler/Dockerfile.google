@@ -19,7 +19,6 @@ RUN apt-get update && \
     && apt-get clean && rm -rf /var/cache/apt/archives/* /var/lib/apt/lists/*
 # set display port and dbus env to avoid hanging
 ENV DISPLAY=:99
-
 RUN mkdir -p /usr/src/app
 WORKDIR /usr/src/app
 
@@ -29,4 +28,5 @@ COPY ./requirements.txt /usr/src/app/requirements.txt
 RUN pip install -r requirements.txt
 COPY ./requirements.txt /usr/src/app/requirements.txt
 COPY . /usr/src/app
-CMD exec gunicorn -b 0.0.0.0:$PORT --log-level=info --workers=6 -t 200000  wsgi:app
+
+CMD exec gunicorn -b 0.0.0.0:$PORT --log-level=debug --workers=6 -k uvicorn.workers.UvicornWorker -t 200000  main:app

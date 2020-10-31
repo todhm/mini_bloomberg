@@ -39,6 +39,7 @@ def check_returned_report_link_data(data_list):
         assert type(date) is dt
 
 
+@pytest.mark.linktest
 def test_return_report_link_list(ddh):
     stock_code = 5930
     company_name = "삼성전자"
@@ -68,6 +69,7 @@ def test_return_report_link_list(ddh):
         assert type(report['corp_name']) is str
 
 
+@pytest.mark.linktest
 def test_return_seminual_report_link_list(ddh):
     stock_code = 5930
     company_name = "삼성전자"
@@ -94,6 +96,7 @@ def test_return_seminual_report_link_list(ddh):
         assert(type(report['corp_name']) is str)
 
 
+@pytest.mark.linktest
 def test_return_report_link_list_hyundai(ddh):
     stock_code = 5380
     company_name = "현대자동차"
@@ -764,4 +767,38 @@ def test_samsung_normal_parse_error(ddh):
     assert(result['net_income'] == -362253077000)
     assert(result['cashflow_from_operation'] == 6077767311000)    
 
-    
+
+@pytest.mark.asyncio()
+@pytest.mark.driver
+async def test_driver_error_case(ddh):
+    url = 'http://dart.fss.or.kr/dsaf001/main.do?rcpNo=20030813000292'
+    result_list, failed_result = await ddh.return_reportlink_data(link=url)
+    assert(len(result_list) == 1)
+    result = result_list[0]
+    assert(result['current_assets'] == 37699490881)
+    assert(result['cashflow_from_operation'] == 4425941755)    
+    assert(result['total_assets'] == 160800914775)
+    assert(result['longterm_debt'] == 9747458927)
+    assert(result['current_debt'] == 36526514384)
+    assert(result['sales'] == 26151312347)
+    assert(result['operational_income'] == 1050599514)
+    assert(result['net_income'] == 723505382)
+    assert(result['book_value'] == 114526941464)
+
+
+@pytest.mark.asyncio()
+@pytest.mark.errorcase
+async def test_report_error(ddh):
+    url = 'http://dart.fss.or.kr/dsaf001/main.do?rcpNo=20130304000404'
+    result_list, failed_result = await ddh.return_reportlink_data(link=url)
+    assert(len(result_list) == 1)
+    result = result_list[0]
+    assert(result['current_assets'] == 37699490881)
+    assert(result['cashflow_from_operation'] == 4425941755)    
+    assert(result['total_assets'] == 160800914775)
+    assert(result['longterm_debt'] == 9747458927)
+    assert(result['current_debt'] == 36526514384)
+    assert(result['sales'] == 26151312347)
+    assert(result['operational_income'] == 1050599514)
+    assert(result['net_income'] == 723505382)
+    assert(result['book_value'] == 114526941464)

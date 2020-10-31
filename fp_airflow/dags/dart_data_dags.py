@@ -1,7 +1,9 @@
 from airflow import DAG
 from airflow.operators.python_operator import PythonOperator
 from task_functions import handle_dart_jobs
+from task_functions import create_feature_tasks
 from datetime import datetime, timedelta
+from config import ProductionSettings
 import pendulum
 
 local_tz = pendulum.timezone("Asia/Seoul")
@@ -39,12 +41,25 @@ company_prepare_tasks = PythonOperator(
         depends_on_past=False,
         provide_context=True,
         op_kwargs={
-         'db_name': 'fp_data'
+         'db_name': ProductionSettings.MONGODB_NAME
         },
     )
 
-total_number = 15
+total_number = 2
 for i in range(total_number):
+    save_report_links = PythonOperator(
+        task_id=f'save_report_links_{i}',
+        python_callable=handle_dart_jobs.prepare_company_links,
+        dag=dag,
+        depends_on_past=False,
+        provide_context=True,
+        op_kwargs={
+         'start_idx': i,
+         'total_task_count': total_number,
+         'db_name': ProductionSettings.MONGODB_NAME
+        },
+    )
+    save_report_links.set_upstream(company_prepare_tasks)
     save_report_data = PythonOperator(
         task_id=f'save_report_data_{i}',
         python_callable=handle_dart_jobs.insert_company_data_list,
@@ -54,7 +69,20 @@ for i in range(total_number):
         op_kwargs={
          'start_idx': i,
          'total_task_count': total_number,
-         'db_name': 'fp_data'
+         'db_name': ProductionSettings.MONGODB_NAME
         },
     )
-    save_report_data.set_upstream(company_prepare_tasks)
+    save_report_data.set_upstream(save_report_links)
+    feature_tasks = PythonOperator(
+        task_id=f'create_ml_features_{i}',
+        python_callable=create_feature_tasks.create_machine_learning_features,
+        dag=dag,
+        depends_on_past=False,
+        provide_context=True,
+        op_kwargs={
+         'start_idx': i,
+         'total_task_count': total_number,
+         'db_name': ProductionSettings.MONGODB_NAME
+        },
+    )
+    feature_tasks.set_upstream(save_report_data)

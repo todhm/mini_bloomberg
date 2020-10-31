@@ -19,5 +19,6 @@ def longrunningmongo() -> Database:
     client = MongoClient(lrsettings.MONGO_URI)
     db = client[lrsettings.MONGODB_NAME]
     yield db
+    db.ml_feature_list.drop()
     client.close()
     

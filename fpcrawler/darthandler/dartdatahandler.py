@@ -13,9 +13,6 @@ from utils import exception_utils
 from aiohttp import (
     ClientSession,
 )
-from aiosocksy.connector import (
-    ProxyConnector, ProxyClientRequest
-)
 from fp_types import (
     YEARLY_REPORT, 
     QUARTER_REPORT,
@@ -58,15 +55,12 @@ class DartDataHandler(object):
         
     async def return_async_get_soup(self, url, proxy_object=None, timeout=10):
         try:
-            connector = ProxyConnector(remote_resolve=False)
+            # connector = ProxyConnector(remote_resolve=False)
             async with ClientSession(
-                connector=connector,
-                request_class=ProxyClientRequest
             ) as s:
                 async with s.get(
                     url, 
                     headers=self.headers,
-                    proxy=self.sockproxy
                 ) as resp:
                     result_string = await resp.text()                    
                     soup = BeautifulSoup(result_string, 'html.parser')
@@ -97,7 +91,6 @@ class DartDataHandler(object):
             'textPresenterNm': '',
             'startDate': start_date,
             'endDate': today_string,
-            'finalReport': 'recent',
             'typesOfBusiness': 'all',
             'corporationType': 'all',
             'closingAccountsMonth': 'all',
@@ -108,7 +101,6 @@ class DartDataHandler(object):
             url, 
             data=post_data, 
             headers=self.headers,
-            proxies=self.proxies
         )
         if result.status_code > 300:
             return []
@@ -180,7 +172,7 @@ class DartDataHandler(object):
     def return_report_list_links(
             self, code, currentPage, report_type,
             company_name, start_date=None, textCrpCik=None,
-            return_final=True
+            return_final=False
     ):
         url = 'http://dart.fss.or.kr/corp/searchExistAll.ax'
         today_string = dt.strftime(dt.now(), '%Y%m%d')
@@ -208,7 +200,7 @@ class DartDataHandler(object):
         if textCrpCik:
             post_data['textCrpCik'] = textCrpCik
         else:
-            data = requests.post(url, data=tpdata, proxies=self.proxies)
+            data = requests.post(url, data=tpdata)
             if data.status_code == 200:
                 if data.text != 'null':
                     post_data['textCrpCik'] = data.text.strip()
@@ -217,7 +209,6 @@ class DartDataHandler(object):
                     data = requests.post(
                         url, 
                         data=tpdata, 
-                        proxies=self.proxies
                     )
                     if data.text != 'null' and data.status_code == 200:
                         post_data['textCrpCik'] = data.text.strip()
@@ -227,7 +218,6 @@ class DartDataHandler(object):
             url, 
             data=post_data, 
             headers=self.headers,
-            proxies=self.proxies
         )
         if result.status_code > 300:
             return []
@@ -249,7 +239,7 @@ class DartDataHandler(object):
                     company_name,
                     start_date=start_date,
                     textCrpCik=None,
-                    return_final=False
+                    return_final=True
                 )
                 if not result:
                     break 
@@ -284,7 +274,7 @@ class DartDataHandler(object):
                 currentPage += 1
         return final_result  
     
-    async def return_multiple_link_results(self, link_list, jump=30):
+    async def return_multiple_link_results(self, link_list, jump=3):
         success_list = []
         failed_list = []
         for i in range(0, len(link_list), jump):
@@ -364,16 +354,11 @@ class DartDataHandler(object):
             random.choice(string.ascii_uppercase + string.digits) 
             for _ in range(10)
         ) + '.xls'
-        connector = ProxyConnector(remote_resolve=False)
-        async with ClientSession(
-            request_class=ProxyClientRequest,
-            connector=connector
-        ) as session:
+        async with ClientSession() as session:
             async with session.get(
                 link, 
                 headers=self.headers, 
                 allow_redirects=True,
-                proxy=self.sockproxy,
             ) as resp:
                 if resp.status != 200:
                     logger.error(f"Request Error on {report_link} {link}")
@@ -654,14 +639,13 @@ class DartDataHandler(object):
 
             except Exception:
                 break 
-
         return final_results
 
-    async def return_company_report_data_list(
-            self, 
-            code: str, 
-            company: str, 
-            start_date=None
+    async def return_company_link_list(
+        self, 
+        code: str, 
+        company: str, 
+        start_date=None
     ):
         try:
             report_list = self.return_company_report_link_list(
@@ -709,6 +693,20 @@ class DartDataHandler(object):
             )
             logger.error(errorMessage)
             raise ValueError(errorMessage)
+        print(len(report_list), 'report link')
+        return report_list
+
+    async def return_company_report_data_list(
+            self, 
+            code: str, 
+            company: str, 
+            start_date=None
+    ):
+        report_list = await self.return_company_link_list(
+            code=code,
+            company=company, 
+            start_date=start_date
+        )
         print(len(report_list), 'report link')
         data_list = await self.return_multiple_link_results(report_list)
         return data_list

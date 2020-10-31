@@ -17,6 +17,7 @@ def prepare_report_data():
     stock_data_list = df.to_dict('records')        
     client = MongoClient(settings.MONGO_URI)
     db = client[settings.MONGODB_NAME]
+    db.report_data_list.drop()
     db.report_data_list.insert_many(data_list)
     db.market_data.insert_many(stock_data_list)
     client.close()

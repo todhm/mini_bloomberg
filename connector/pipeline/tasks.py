@@ -1,18 +1,20 @@
+import logging
 import os
 from typing import Dict
 from pymongo import MongoClient
 import pandas as pd
 from celery_app import celery_app
 from pipeline.datahandler import (
-    prepare_report_data,
-    prepare_stock_df
+    prepare_stock_df,
+    save_pipeline_data
 )
 from fp_types import (
     CONNECTED_FINANCIAL_STATEMENTS,
     NORMAL_FINANCIAL_STATEMENTS,
-    feature_list,
-
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 @celery_app.task(bind=True, name='save_machinelearing_features_data')
@@ -32,7 +34,6 @@ def save_machinelearing_features_data(self, code: str, db_name: str) -> Dict:
         'current_debt',
         'code',
         'corp_name',
-        'title',
         'reg_date',
         'report_link',
         'table_link',
@@ -53,10 +54,7 @@ def save_machinelearing_features_data(self, code: str, db_name: str) -> Dict:
     df['reg_date'] = pd.to_datetime(df['reg_date'], infer_datetime_format=True)
     df = df.sort_values('reg_date', ascending=True)
     connected_df = df[df['report_type'] == CONNECTED_FINANCIAL_STATEMENTS]
-    if len(connected_df) >= 1:
-        df = connected_df
-    else:
-        df = df[df['report_type'] == NORMAL_FINANCIAL_STATEMENTS]
+    normal_df = df[df['report_type'] == NORMAL_FINANCIAL_STATEMENTS]
     stockcode = ''.zfill(6-len(str(code))) + str(code)
     data_list = list(
         db.market_data.find(
@@ -66,23 +64,35 @@ def save_machinelearing_features_data(self, code: str, db_name: str) -> Dict:
     )
     stock_df = pd.DataFrame(data_list)
     stock_df = prepare_stock_df(stock_df)
-    df = prepare_report_data(df, stock_df)
-    df = df.rename(columns={
-        'yearly_code': 'code',
-        'yearly_reg_date': 'reg_date',
-        'yearly_corp_name': 'corp_name',
-        'yearly_report_link': 'report_link'
-    })
-    save_feature_list = feature_list + [
-        'code', 
-        'reg_date', 
-        'corp_name', 
-        'report_link'
-    ]
-    df = df[save_feature_list]
-    if len(df) < 1:
-        raise ValueError("Failed to create machinelearning data")
-    db.ml_feature_list.delete_many({'code': code})
-    db.ml_feature_list.insert_many(df.to_dict('records'))
+    success_list = []
+    failed_list = []
+    try:
+        save_pipeline_data(
+            db,
+            normal_df,
+            stock_df,
+            NORMAL_FINANCIAL_STATEMENTS,
+            code
+        )
+        success_list.append(NORMAL_FINANCIAL_STATEMENTS)
+    except ValueError as ve:
+        failed_list.append(NORMAL_FINANCIAL_STATEMENTS)
+        logger.error(ve)
+    try:
+        save_pipeline_data(
+            db,
+            connected_df,
+            stock_df,
+            CONNECTED_FINANCIAL_STATEMENTS,
+            code
+        )
+        success_list.append(CONNECTED_FINANCIAL_STATEMENTS)
+    except ValueError as ve:
+        failed_list.append(CONNECTED_FINANCIAL_STATEMENTS)
+        logger.error(ve)    
+
     client.close()
-    return {'result': 'success'}
+    return {
+        'success_list': success_list,
+        'failed_list': failed_list
+    }

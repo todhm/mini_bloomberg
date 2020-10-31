@@ -134,6 +134,7 @@ services:
     depends_on:
       - fp_postgres
       - fpgunicorn
+      - connector_worker
       - fp_mongo
     env_file:
       - ./envfiles/.airflow_development.env

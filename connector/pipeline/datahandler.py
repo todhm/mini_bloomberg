@@ -1,10 +1,19 @@
+from typing import Literal
 import pandas as pd
+from pymongo.database import Database
 from pandasql import sqldf
+from marshmallow import ValidationError
+from models.schema import MachineLearningSaveSchema
 from fp_types import (
     YEARLY_REPORT,
     MARCH_REPORT,
     SEPTEMBER_REPORT,
     SEMINUAL_REPORT
+)
+from fp_types import (
+    CONNECTED_FINANCIAL_STATEMENTS,
+    NORMAL_FINANCIAL_STATEMENTS,
+    feature_list,
 )
 
 
@@ -13,6 +22,8 @@ def return_local_sql(q, loc_object):
 
 
 def prepare_stock_df(stock_df: pd.DataFrame) -> pd.DataFrame:
+    stock_df['stock_date'] = stock_df['Date']
+    stock_df.drop_duplicates(subset=['stock_date'], keep='first', inplace=True) 
     stock_df = stock_df.set_index('Date')       
     lags = [1, 5, 10]
     for lag in lags:
@@ -22,7 +33,10 @@ def prepare_stock_df(stock_df: pd.DataFrame) -> pd.DataFrame:
             .add(1)
             .pow(1/lag)
             .sub(1)
+            .shift(1)
         )
+    
+    stock_df = stock_df.dropna(subset=['return_1d', 'return_5d', 'return_10d'])
     return stock_df
 
 
@@ -42,7 +56,6 @@ def prepare_period_numerics(df: pd.DataFrame, period: str) -> pd.DataFrame:
         'current_debt',
         'code',
         'corp_name',
-        'title',
         'reg_date',
         'report_link',
         'table_link',
@@ -164,6 +177,7 @@ def prepare_report_data(df: pd.DataFrame, stock_df: pd.DataFrame):
     joined_df['Marcap_lag'] = joined_df['Marcap'].shift(1)
     for period in ['yearly', 'march', 'september', 'june']:
         period_df = df[df['period_type'] == report_dict[period]]
+        period_df = period_df.reset_index(drop=True)
         period_df = prepare_period_numerics(period_df, period)
         pysqldf = return_local_sql
         cond_join = '''
@@ -172,10 +186,15 @@ def prepare_report_data(df: pd.DataFrame, stock_df: pd.DataFrame):
                 period_df.*
             from joined_df
             join period_df
-            on
-            joined_df.date > period_df.reg_date 
-            and (julianday(joined_df.date) - julianday(period_df.reg_date)) 
-            < 365
+            ON period_df.reg_date = (
+                SELECT period_df.reg_date
+                FROM period_df
+                WHERE
+                joined_df.date > period_df.reg_date 
+                and (julianday(joined_df.date) - julianday(period_df.reg_date)) 
+                < 365 
+                LIMIT 1
+            )
         '''
         # Now, get your queries results as dataframe using the sqldf object 
         # that you created
@@ -183,7 +202,55 @@ def prepare_report_data(df: pd.DataFrame, stock_df: pd.DataFrame):
         joined_df[f'{period}_book_to_market'] = (
             joined_df[f'{period}_book_value'] / joined_df['Marcap_lag']
         )
-        joined_df = joined_df.dropna(subset=[f'{period}_roa_diff'])
+        joined_df = joined_df.dropna(
+            subset=[f'{period}_roa_diff', f'{period}_book_to_market']
+        )
     return joined_df
 
+
+def save_pipeline_data(
+    db: Database, 
+    df: pd.DataFrame, 
+    stock_df: pd.DataFrame, 
+    report_type: Literal[
+        CONNECTED_FINANCIAL_STATEMENTS,
+        NORMAL_FINANCIAL_STATEMENTS
+    ],
+    code: str
+):
+    # print(report_type, code)
+    df = prepare_report_data(df, stock_df)
+    df = df.rename(columns={
+        'yearly_code': 'code',
+        'yearly_corp_name': 'corp_name',
+    })
+    save_feature_list = feature_list + [
+        'stock_date',
+        'code',
+        'yearly_reg_date',
+        'march_reg_date',
+        'june_reg_date',
+        'september_reg_date',
+        'yearly_report_link',
+        'march_report_link',
+        'june_report_link',
+        'september_report_link',
+        'corp_name',
+        'Close'
+    ]
+    df = df[save_feature_list]
+    df['report_type'] = report_type
+    if len(df) < 1:
+        raise ValueError(
+            f"Failed to create machinelearning data {report_type}"
+        )
+    schema = MachineLearningSaveSchema(many=True)
+    try:
+        # replace numpy nans so that Marshmallow can validate
+        data_list = schema.load(df.to_dict("records"))
+    except ValidationError as exc:
+        errors = exc.messages
+        raise ValueError(f"Validation error data {errors}")
+    db.ml_feature_list.delete_many({'code': code, "report_type": report_type})
+    db.ml_feature_list.insert_many(data_list)
 

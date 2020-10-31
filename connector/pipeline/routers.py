@@ -32,8 +32,9 @@ async def tasks_post(item: Item):
 async def tasks_get(task_id: str):
     try:
         res = AsyncResult(task_id)
-        status = res.state
-        return JSONResponse({'status': status})
+        state = res.state
+        result = res.result
+        return JSONResponse({'state': state, 'data': result})
     except Exception as e: 
         return JSONResponse(
             {'errorMessage': str(e)},

@@ -16,4 +16,6 @@ def create_mongodb_indexes(db_name: str):
     db.eq_offer_list.create_index('report_link')
     db.eq_offer_list.create_index('reg_date')
     db.ml_feature_list.create_index('code')
+    db.ml_feature_list.create_index('stock_date')
+    db.ml_feature_list.create_index('report_type')
     client.close()

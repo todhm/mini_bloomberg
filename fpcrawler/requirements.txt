@@ -33,6 +33,7 @@ Jinja2==2.11.2
 jplephem==2.15
 lunardate==0.2.0
 lxml==4.4.1
+marshmallow==3.8.0
 MarkupSafe==1.1.1
 multidict==4.7.5
 numpy==1.19.2

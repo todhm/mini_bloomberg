@@ -27,4 +27,5 @@ class CeleryRespone(BaseModel):
 
 class CeleryStatusRespone(BaseModel):
     state: CeleryChoices
+    data: Dict = {}
     

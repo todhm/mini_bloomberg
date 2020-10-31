@@ -90,8 +90,6 @@ feature_list = [
     'june_atr',
     'june_operational_income',
     'june_gross_profit',
-    'june_extra_ordinary_profit',
-    'june_extra_ordinary_loss',
     'june_total_assets',
     'june_longterm_debt',
     'june_current_assets',

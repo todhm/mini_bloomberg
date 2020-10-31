@@ -43,3 +43,11 @@ class EqOfferList(db.DynamicDocument):
     corp_name = StringField()
     link = StringField()
     reg_date = DateTimeField()
+
+
+class MlFeatureList(db.DynamicDocument):
+    meta = {
+        'collection': 'ml_feature_list',
+        'indexes': ['code', 'report_type', 'stock_date']
+    }
+    

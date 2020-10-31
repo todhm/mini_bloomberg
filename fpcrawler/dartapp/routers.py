@@ -1,8 +1,14 @@
+from typing import List
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 from darthandler.dartdatahandler import DartDataHandler
-from .forms import Item
+from .forms import (
+    Item, LinkList,  ReportDict
+)
 import requests
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 dartapp = APIRouter()
@@ -10,8 +16,7 @@ dartapp = APIRouter()
 
 @dartapp.get("/")
 def hello_world():
-    proxies = {'http': 'http:torproxy:9300'}
-    r = requests.get('http://ifconfig.me/ip', proxies=proxies)
+    r = requests.get('http://ifconfig.me/ip')
     return 'You connected from IP address: ' + r.text
 
 
@@ -48,5 +53,42 @@ async def return_eq_api(item: Item):
         result['errorMessage'] = str(e)
         return JSONResponse(
             result,
+            status_code=400
+        )
+
+
+@dartapp.post("/links", response_model=LinkList)
+async def report_links(item: Item):
+    company = item.company
+    code = item.code
+    start_date = item.start_date
+    try:
+        ddh = DartDataHandler()
+        result = await ddh.return_company_link_list(
+            code, 
+            company, 
+            start_date=start_date
+        )
+        return JSONResponse(result)
+    except Exception as e:
+        return JSONResponse(
+            {'errorMessage': str(e)},
+            status_code=400
+        )
+
+
+@dartapp.post("/report", response_model=List[ReportDict])
+async def crawl_report(link_list: LinkList):
+    try:
+        ddh = DartDataHandler()
+        data_dict = link_list.dict()
+        link_list = data_dict['linkList']
+        result = await ddh.return_multiple_link_results(
+            link_list
+        )
+        return JSONResponse(result)
+    except Exception as e:
+        return JSONResponse(
+            {'errorMessage': str(e)},
             status_code=400
         )

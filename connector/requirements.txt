@@ -20,6 +20,7 @@ itsdangerous==1.1.0
 Jinja2==2.11.2
 kombu==5.0.2
 MarkupSafe==1.1.1
+marshmallow==3.8.0
 mongoengine==0.20.0
 multidict==4.7.6
 numpy==1.18.5

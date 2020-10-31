@@ -1,17 +1,15 @@
 import asyncio
 import json
 from aiohttp import ClientSession, ClientTimeout, TCPConnector
+from typing import List, Dict
 
 
-def async_post_functions(url, data_list, timeout=1000, request_counts=10):
+def async_post_functions(url, data_list: List[Dict]):
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-    timeout = ClientTimeout(total=timeout)
-    conn = TCPConnector(limit=request_counts)
-    session = ClientSession(connector=conn, loop=loop)
     async_list = []
     for idx, item in enumerate(data_list):
-        async_list.append(call_async_post(session, url, item))
+        async_list.append(call_async_post(url, item))
     all_results = asyncio.gather(*async_list, return_exceptions=True)
     results = loop.run_until_complete(all_results)
     loop.close()
@@ -26,19 +24,20 @@ def async_post_functions(url, data_list, timeout=1000, request_counts=10):
     return success_list, failed_list
 
 
-async def call_async_post(session, url, data, retry_attempts=4):
-    async with session.post(
-        url, 
-        json=data, 
-    ) as response:
-        try:
-            text = await response.text()
-            json_data = json.loads(text)
-            if response.status != 200:
-                error_message = json_data.get("errorMessage", '')
-                raise ValueError("Not a valid request " + error_message)
-        except Exception as e: 
-            raise ValueError(str(e))
+async def call_async_post(url, data):
+    async with ClientSession() as session:
+        async with session.post(
+            url, 
+            json=data, 
+        ) as response:
+            try:
+                text = await response.text()
+                json_data = json.loads(text)
+                if response.status != 200:
+                    error_message = json_data.get("errorMessage", '')
+                    raise ValueError("Not a valid request " + error_message)
+            except Exception as e: 
+                raise ValueError(str(e))
     return json_data
 
 
