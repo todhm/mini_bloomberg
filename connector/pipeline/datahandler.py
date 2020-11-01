@@ -163,6 +163,7 @@ def prepare_period_numerics(df: pd.DataFrame, period: str) -> pd.DataFrame:
     period_key_list = [f'{period}_{x}' for x in key_list]
     col_list.extend(period_key_list)
     df = df[col_list]
+    # print(df[[f'{period}_book_value','reg_date']].head())
     return df
     
     

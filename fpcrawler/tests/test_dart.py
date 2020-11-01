@@ -147,3 +147,40 @@ def test_link_report_crawl():
         assert report.title == post_data[idx]['title']
         assert report.period_type == post_data[idx]['period_type']
         
+
+@pytest.mark.api
+@pytest.mark.apitest
+def test_looking_minus_case():
+    post_data = [{
+        'code': '95700',
+        'link': 'http://dart.fss.or.kr/dsaf001/main.do?rcpNo=20030331001679',
+        'reg_date': '2020-03-30',
+        'corp_name': '제넥신',
+        'market_type': '코스닥시장',
+        'title': '사업보고서 (2019.12)',
+        'period_type': '사업보고서',
+        'reporter': '제넥신'
+    }]
+    response = client.post(
+        '/report', 
+        json={'linkList': post_data}
+    )
+    result = response.json()
+    success_list = result.get('success_list')
+    assert(len(success_list) == 2)
+    for idx, result in enumerate(success_list):
+        report = ReportDict(**result)
+        assert report.code == post_data[0]['code']
+        assert report.report_link == post_data[0]['link']
+        assert report.corp_name == post_data[0]['corp_name']
+        assert report.market_type == post_data[0]['market_type']
+        assert report.title == post_data[0]['title']
+        assert report.period_type == post_data[0]['period_type']
+        if report.report_type == fp_types.NORMAL_FINANCIAL_STATEMENTS:
+            assert report.book_value == 3515827104873
+            assert report.current_assets == 1709718127782
+            assert report.total_assets == 10497866854776
+            assert report.longterm_debt == 4466086926736
+            assert report.net_income == 111897096307
+            assert report.sales == 6249700472132
+            assert report.operational_income == 295151257697

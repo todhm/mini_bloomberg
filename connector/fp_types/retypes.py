@@ -81,7 +81,8 @@ none_minus_keys = [
     'total_assets',
     'longterm_debt',
     'current_assets',
-    'current_debt'
+    'current_debt',
+    'book_value'
 ]
 balance_data_re_list = [
     f"{petovski_balancesheet_dict['current_assets']}"

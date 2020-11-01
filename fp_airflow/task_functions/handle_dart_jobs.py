@@ -27,6 +27,7 @@ def prepare_company_report_list(
     df = df.fillna('')
     df = df.sort_values('register_date', ascending=True)
     df = df[0:100]
+    db.company_list.delete_many({})
     df['register_date'] = df['register_date'].apply(
         lambda x: x.strftime('%Y%m%d')
     )

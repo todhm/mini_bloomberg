@@ -18,6 +18,7 @@ def prepare_report_data():
     client = MongoClient(settings.MONGO_URI)
     db = client[settings.MONGODB_NAME]
     db.report_data_list.drop()
+    db.market_data.drop()
     db.report_data_list.insert_many(data_list)
     db.market_data.insert_many(stock_data_list)
     client.close()

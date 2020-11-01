@@ -15,6 +15,6 @@ timezone = 'Asia/Seoul'
 
 # Maximum retries per task
 task_track_started = True
-imports = ('pipeline.tasks', )
+imports = ('pipeline.tasks', 'ml_models.tasks')
 
 # A custom property used in tasks.py:run()

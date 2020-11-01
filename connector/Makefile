@@ -2,7 +2,10 @@
 NAME:=ml_api
 REPO:=UPDATEME
 PASSWORD:=UPDATEME
-.PHONY: preparedata
+.PHONY: preparedata makeindex
 
 preparedata:
 	PYTHONPATH=. python script/prepare_data.py 
+
+makeindex:
+	PYTHONPATH=. python script/create_index.py 

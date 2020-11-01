@@ -6,9 +6,10 @@ from pipeline.tasks import save_machinelearing_features_data
 import fp_types
 
 
+@pytest.mark.pipelocal
 @pytest.mark.celerylocal
 def test_company_pipeline_tasks(longrunningmongo):
-    test_company_code = "2200"
+    test_company_code = "3490"
     result = save_machinelearing_features_data(
         test_company_code, settings.MONGODB_NAME
     )
@@ -47,6 +48,7 @@ def test_company_pipeline_tasks(longrunningmongo):
     assert len(connected_dt_list) == len(connected_feature_list)
 
 
+@pytest.mark.pipeline
 @pytest.mark.celerytasks
 def test_report_data_second_error_case(longrunningmongo):
     test_company_code = "2200"

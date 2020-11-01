@@ -427,7 +427,8 @@ class DartDataHandler(object):
             'corp_name': corp_name, 
             'period_type': period_type,
             'reg_date': reg_date,
-            'market_type': market_type
+            'market_type': market_type,
+            'title': title
         }
         try:
             soup = await self.return_async_get_soup(link)
@@ -556,7 +557,8 @@ class DartDataHandler(object):
                     report_type=report_type,
                     period_type=period_type,
                     reg_date=reg_date, 
-                    market_type=market_type
+                    market_type=market_type,
+                    title=title
                 )
                 if idx == 1 and is_connected_inside_normal:
                     result = drh.parse_report_link(

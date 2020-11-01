@@ -85,7 +85,6 @@ services:
 
   connector:
     image: fidelkang/connector
-    container_name: connector
     build:
       context: ./connector
       dockerfile: Dockerfile

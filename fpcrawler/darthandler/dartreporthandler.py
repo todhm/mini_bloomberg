@@ -42,7 +42,8 @@ class DartReportHandler(object):
         report_type: str,
         period_type: str,
         reg_date: str, 
-        market_type: str
+        market_type: str,
+        title: str
     ):
         self.table_link = table_link 
         self.link = link
@@ -54,7 +55,8 @@ class DartReportHandler(object):
             'report_type': report_type, 
             'period_type': period_type,
             'reg_date': reg_date, 
-            'market_type': market_type
+            'market_type': market_type,
+            'title': title
         }
         self.soup = soup
 
