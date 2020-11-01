@@ -88,6 +88,7 @@ def save_model_results(
     )
     data = mldata.to_json
     db.ml_model_result.insert_one(data)
+    return data
     
     
 

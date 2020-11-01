@@ -102,9 +102,9 @@ class TaskArgumentsList:
         db: Database, 
         taskName: str, 
         timestamp: int,
-        currentIdx: int, 
-        totalTaskLength: int
-    ):
+        currentIdx: int = 0, 
+        totalTaskLength: int = 1
+    ) -> List:
         task_argument_doc = db.airflow_task_list.find_one({
             'taskName': taskName, 
             "timestamp": timestamp
@@ -115,4 +115,31 @@ class TaskArgumentsList:
         end = each_length * (currentIdx + 1)
         return data_list[start:end]
 
-            
+    @classmethod
+    def fetch_total_arguments(
+        cls,
+        db: Database, 
+        taskName: str, 
+        timestamp: int,
+    ) -> List:
+        task_argument_doc = db.airflow_task_list.find_one({
+            'taskName': taskName, 
+            "timestamp": timestamp
+        })
+        data_list = task_argument_doc['dataList']
+        return data_list
+
+
+@dataclass
+class MlModel:
+    reg_date: dt = dt.now()
+    model_name: str = ""
+    model_features: List = field(default_factory=list)
+    train_code_list: List = field(default_factory=list)
+    test_code_list: List = field(default_factory=list)
+    model_params: Dict = field(default_factory=dict)
+    model_performance: Dict = field(default_factory=dict)
+
+    @property
+    def to_json(self):
+        return asdict(self)

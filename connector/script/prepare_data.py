@@ -2,6 +2,7 @@ import json
 from datetime import datetime as dt
 from pymongo import MongoClient
 import pandas as pd
+from pipeline.tasks import save_machinelearing_features_data
 from tests.lr_test_app import settings
 
 
@@ -21,6 +22,13 @@ def prepare_report_data():
     db.market_data.drop()
     db.report_data_list.insert_many(data_list)
     db.market_data.insert_many(stock_data_list)
+    db.ml_feature_list.drop()
+    _ = save_machinelearing_features_data(
+        "2200", settings.MONGODB_NAME
+    )
+    _ = save_machinelearing_features_data(
+        "3490", settings.MONGODB_NAME
+    )
     client.close()
 
         

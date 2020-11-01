@@ -20,7 +20,7 @@ def longrunningdb() -> Database:
     client = MongoClient(LongRunningTestSettings.MONGO_URI)
     db = client[LongRunningTestSettings.MONGODB_NAME]
     yield db
-    db.ml_feature_list.drop()
+    db.ml_model_result.drop()
 
 
 @pytest.fixture()

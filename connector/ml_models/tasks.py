@@ -20,6 +20,7 @@ def save_ml_models(
     mongo_uri = os.environ.get("MONGO_URI")
     client = MongoClient(mongo_uri)
     db = client[db_name]
+    model_result = []
     try:
         model_params = {
             'n_estimators': 200,
@@ -30,13 +31,16 @@ def save_ml_models(
             **model_params
         )
         model_prefix = f'{model_name}_connected'
-        save_model_results(
+        result = save_model_results(
             db=db,
             report_type=CONNECTED_FINANCIAL_STATEMENTS,
             model_prefix=model_prefix,
             regr=regr,
             model_params=model_params,
         )
+        if result.get('_id'):
+            result.pop("_id")
+        model_result.append(result)
     except Exception as e:
         error_message = (
             "Error while making models for "
@@ -54,13 +58,16 @@ def save_ml_models(
             **model_params
         )
         model_prefix = f'{model_name}_normal'
-        save_model_results(
+        result = save_model_results(
             db=db,
             report_type=NORMAL_FINANCIAL_STATEMENTS,
             model_prefix=model_prefix,
             regr=regr,
             model_params=model_params,
         )
+        if result.get('_id'):
+            result.pop("_id")
+        model_result.append(result)
     except Exception as e:
         error_message = (
             "Error while making models for "
@@ -69,6 +76,4 @@ def save_ml_models(
         logger.error(error_message)
         raise ValueError(error_message)
     client.close()
-    return {
-        "result": "success"
-    }
+    return model_result

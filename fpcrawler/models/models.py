@@ -1,8 +1,6 @@
-from datetime import datetime as dt
 from marshmallow import (
     fields, Schema, validate
 )
-import typing
 
 
 class ReportSchema(Schema):
