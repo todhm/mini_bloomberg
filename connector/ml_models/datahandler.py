@@ -79,6 +79,7 @@ def save_model_results(
         'MSE': current_mse,
     }
     mldata = MlModel(
+        report_type=report_type,
         model_name=model_name,
         model_performance=model_performance,
         model_features=feature_list,
@@ -89,8 +90,5 @@ def save_model_results(
     data = mldata.to_json
     db.ml_model_result.insert_one(data)
     return data
-    
-    
-
 
 

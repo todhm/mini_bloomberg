@@ -4,7 +4,11 @@ from datetime import datetime as dt
 from dataclasses import asdict, fields, field
 from pymongo.database import Database
 from pymongo.collection import Collection
-from typing import List, Dict
+from typing import List, Dict, Literal
+from fp_types import (
+    NORMAL_FINANCIAL_STATEMENTS,
+    CONNECTED_FINANCIAL_STATEMENTS
+)
 
 
 @dataclass 
@@ -139,6 +143,10 @@ class MlModel:
     test_code_list: List = field(default_factory=list)
     model_params: Dict = field(default_factory=dict)
     model_performance: Dict = field(default_factory=dict)
+    report_type: Literal[
+        CONNECTED_FINANCIAL_STATEMENTS,
+        NORMAL_FINANCIAL_STATEMENTS
+    ]
 
     @property
     def to_json(self):
