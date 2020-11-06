@@ -21,6 +21,7 @@ def longrunningdb() -> Database:
     db = client[LongRunningTestSettings.MONGODB_NAME]
     yield db
     db.ml_model_result.drop()
+    db.simulation_result.drop()
 
 
 @pytest.fixture()

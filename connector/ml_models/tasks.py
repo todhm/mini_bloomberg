@@ -83,7 +83,7 @@ def save_ml_models(
 @celery_app.task(bind=True, name='simulate_model_result')
 def simulate_model_result(
     self, db_name: str, model_name: str = 'randomforest'
-) -> List[Dict]:
+) -> Dict:
     mongo_uri = os.environ.get("MONGO_URI")
     client = MongoClient(mongo_uri)
     db = client[db_name]
@@ -97,7 +97,7 @@ def simulate_model_result(
             initial_total_budget=3000000,
             single_purchase_amount=20
         )
-        sml.simulate_model_result()
+        result = sml.simulate_model_result()
     except Exception as e:
         error_message = (
             "Error while making simulation "
@@ -107,3 +107,4 @@ def simulate_model_result(
         client.close()
         raise e
     client.close()
+    return result

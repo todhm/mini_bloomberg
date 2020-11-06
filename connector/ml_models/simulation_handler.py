@@ -35,7 +35,7 @@ class SimulationHandler(object):
 
     def simulate_model_result(
         self
-    ):
+    ) -> Dict:
         model_result = self.db.ml_model_result.find_one(
             {"model_name": self.model_name},
             {"_id": False}
@@ -97,6 +97,7 @@ class SimulationHandler(object):
                 }
             )
             sl.save(self.db.simulation_result)
+            return sl.to_json
         except Exception as e:
             raise ValueError(
                 f"Error while save data {str(e)}"
@@ -202,4 +203,4 @@ class SimulationHandler(object):
                     ]
                 )
             )
-        return (final_budget- self.initial_total_budget) / self.initial_total_budget
+        return (final_budget - self.initial_total_budget) / self.initial_total_budget

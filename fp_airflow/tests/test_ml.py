@@ -9,6 +9,7 @@ import fp_types
 
 
 @pytest.mark.ml
+@pytest.mark.ml_model
 def test_save_ml_models(longrunningdb, execution_date):
     ml_models_tasks.create_machine_learning_models(
         db_name=LongRunningTestSettings.MONGODB_NAME, 
@@ -32,3 +33,46 @@ def test_save_ml_models(longrunningdb, execution_date):
         })
         assert model_result is not None
 
+
+@pytest.mark.ml
+@pytest.mark.simulation
+def test_make_simulations(longrunningdb, execution_date):
+    test_model_list = [
+        {
+            'model_name': 'test_randomforest_normal20201101224257.joblib',
+            'report_type': fp_types.NORMAL_FINANCIAL_STATEMENTS,
+            'test_code_list': [
+                '3490',
+                '2200',
+            ]
+        },
+        {
+            'model_name': 'test_randomforest_connected20201101224252.joblib',
+            'report_type': fp_types.CONNECTED_FINANCIAL_STATEMENTS,
+            'test_code_list': [
+                '3490',
+                '2200',
+            ]
+        }
+    ]
+    for data in test_model_list:
+        mldata = MlModel(**data)
+        mldata.save(longrunningdb.ml_model_result)
+    ts = execution_date.timestamp()
+    ts = int(ts)
+    ta = TaskArgumentsList(
+        timestamp=ts, 
+        dataList=test_model_list, taskName=fp_types.SIMULATE_WITH_ML_MODELS
+    )
+    ta.save(longrunningdb)
+    ml_models_tasks.create_simulation_results(
+        db_name=LongRunningTestSettings.MONGODB_NAME, 
+        execution_date=execution_date,
+    )
+    result_list = list(
+        longrunningdb.simulation_result.find(
+           {}, {"_id": False}
+        )
+    )
+    assert len(result_list) == 2
+    

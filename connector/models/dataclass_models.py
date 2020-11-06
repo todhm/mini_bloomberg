@@ -55,3 +55,8 @@ class Strategy:
     def save(self, col: Collection):
         data = asdict(self)
         col.insert_one(data)
+
+    @property
+    def to_json(self):
+        return asdict(self)
+
