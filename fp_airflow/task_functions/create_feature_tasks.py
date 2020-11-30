@@ -1,5 +1,5 @@
 from pymongo import MongoClient
-from dataclass_models.models import CompanyReport
+from task_connector.dart_airflow_connector import DartAirflowConnector
 from utils.celery_utils import execute_celery_tasks
 import config
 
@@ -17,11 +17,12 @@ def create_machine_learning_features(
     mongo_uri = config.BaseSettings.MONGO_URI
     client = MongoClient(mongo_uri)
     db = client[db_name]
-    data_list = CompanyReport.return_company_data(
-        db.company_list,
-        start_idx,
-        total_task_count
+    dac = DartAirflowConnector(
+        db=db,
+        start_idx=start_idx, 
+        total_task_count=total_task_count, 
     )
+    data_list = dac.return_current_task_companies()
     for idx, data in enumerate(data_list):
         print(idx, data['company'], data['code'])
         code = str(data['code'])

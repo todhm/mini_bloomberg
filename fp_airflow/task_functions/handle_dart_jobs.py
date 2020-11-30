@@ -2,9 +2,11 @@ import asyncio
 import os
 import pandas as pd
 from pymongo import MongoClient
+from pendulum import Pendulum
 from dataclass_models.models import (
     CompanyReport
 )
+from task_connector.dart_airflow_connector import DartAirflowConnector
 from utils.dart_utils import (
     handle_dart_link_async_jobs,
     handle_dart_report_async_jobs
@@ -26,8 +28,6 @@ def prepare_company_report_list(
     df = pd.read_excel(excel_file_path)
     df = df.fillna('')
     df = df.sort_values('register_date', ascending=True)
-    df = df[0:100]
-    db.company_list.delete_many({})
     df['register_date'] = df['register_date'].apply(
         lambda x: x.strftime('%Y%m%d')
     )
@@ -46,23 +46,28 @@ def prepare_company_report_list(
 
 
 def prepare_company_links(
-    db_name='testdb', 
-    start_idx=0,
-    total_task_count=1,
+    execution_date: Pendulum,
+    db_name: str = 'testdb', 
+    start_idx: int = 0,
+    total_task_count: int = 1,
+    only_recents: bool = False,
     **kwargs
 ):
-    execution_date = kwargs.get('execution_date')
     ts = execution_date.timestamp()
     ts = int(ts)
     print("current timestamp", ts)
     mongo_uri = os.environ.get("MONGO_URI")
     client = MongoClient(mongo_uri)
     db = client[db_name]
-    data_list = CompanyReport.return_company_data(
-        db.company_list, 
-        start_idx, 
-        total_task_count
+    dac = DartAirflowConnector(
+        db=db,
+        start_idx=start_idx, 
+        total_task_count=total_task_count,
     )
+    if only_recents:
+        data_list = dac.return_current_period_company_list()
+    else:
+        data_list = dac.return_current_task_companies()
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     jumpnum = 10
@@ -93,50 +98,30 @@ def insert_company_data_list(
     mongo_uri = os.environ.get("MONGO_URI")
     client = MongoClient(mongo_uri)
     db = client[db_name]
-    data_list = CompanyReport.return_company_data(
-        db.company_list, 
-        start_idx, 
-        total_task_count,
-        with_links=True
+    dac = DartAirflowConnector(
+        db=db,
+        start_idx=start_idx, 
+        total_task_count=total_task_count,
     )
-    total_request_list = []
-    for idx, data in enumerate(data_list):
-        try:
-            link_list = [link_data['link'] for link_data in data['link_list']]
-            inserted_link_list = list(db.report_data_list.find(
-                {'report_link': {"$in": link_list}},
-                {'report_link': 1}
-            ))
-            inserted_link_list = [x['report_link'] for x in inserted_link_list]
-            new_link_data_list = [
-                x for x in data['link_list'] 
-                if not x['link'] in inserted_link_list
-            ]
-        except Exception as e: 
-            print('Error while get previous report data data ' + str(e))
 
-        jump = 10
-        for start in range(0, len(new_link_data_list), jump):
-            end = start + jump
-            link_list = new_link_data_list[start:end]
-            total_request_list.append({
-                "link_list": link_list,
-                "company": data['company'],
-                "code": data['code'],                 
-            })
+    total_request_list = dac.return_insert_needed_link_list()
+    chunknum = 10
+    total_request_list = [
+        total_request_list[i: i + chunknum] 
+        for i in range(0, len(total_request_list), chunknum)
+    ]
+
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-    jump = 15
-    for start in range(0, len(total_request_list), jump):
-        end = start + jump
+    single_async_request_size = 15
+    for start in range(0, len(total_request_list), single_async_request_size):
+        end = start + single_async_request_size
         request_list = total_request_list[start:end]
         async_list = [
             handle_dart_report_async_jobs(
-                data['link_list'],
+                data,
                 db,
                 ts=ts,
-                company=data['company'],
-                code=data['code']
             )
             for data in request_list
         ]

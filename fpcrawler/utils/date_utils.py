@@ -10,6 +10,7 @@ def timestamp(datett=None):
         datett = dt.now()
     return int(time.mktime(datett.timetuple()))
 
+
 def daterange(start_date, end_date, diffrange):
     date_diff = (end_date - start_date).days
     for n in range(0, int(date_diff), diffrange):

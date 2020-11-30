@@ -1,7 +1,9 @@
+from datetime import timedelta, datetime as dt
 import fp_types
 import pytest
 from tests.test_app import client
 from dartapp.forms import ReportDict
+
 
 
 @pytest.mark.apitest
@@ -18,6 +20,31 @@ def test_link_fetch_api():
     print(len(result))
     
     assert(len(result) >= 80)
+    period_type_list = [x['period_type'] for x in result]
+    assert(fp_types.SEMINUAL_REPORT in period_type_list)
+    assert(fp_types.SEPTEMBER_REPORT in period_type_list)
+    assert(fp_types.MARCH_REPORT in period_type_list)
+    assert(fp_types.YEARLY_REPORT in period_type_list)
+
+
+@pytest.mark.apitest
+@pytest.mark.apistartdate
+def test_link_fetch_api_with_startdate():
+    start_date = dt.strftime(dt.now() - timedelta(days=365), '%Y%m%d')
+    post_data = {
+        'company':  '삼성전자',
+        'code':  5930,
+        'start_date': start_date
+    }
+    response = client.post(
+        '/links', 
+        json=post_data
+    )
+    result = response.json()
+    print(len(result))
+    
+    assert(len(result) > 0)
+    assert(len(result) < 10)
     period_type_list = [x['period_type'] for x in result]
     assert(fp_types.SEMINUAL_REPORT in period_type_list)
     assert(fp_types.SEPTEMBER_REPORT in period_type_list)

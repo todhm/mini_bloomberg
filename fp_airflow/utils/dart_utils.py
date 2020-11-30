@@ -13,8 +13,6 @@ async def handle_dart_report_async_jobs(
     link_list: List[Dict], 
     db: Database, 
     ts: int,
-    company: str = "", 
-    code: str = ""
 ):
     link_url = os.environ.get("FPCRAWLER_URL")
     report_url = f'{link_url}/report'
@@ -32,25 +30,19 @@ async def handle_dart_report_async_jobs(
                     raise ValueError(
                         "Not a valid request " 
                         + error_message 
-                        + f"{code} {company}"
                     )
             except Exception as e: 
                 raise ValueError(
                     str(e) 
-                    + f"{code} {company}"
                 )
     
     success_list = report_data_json['success_list']
     failed_list = report_data_json['failed_list']
     print(
-        company, 
-        code, 
         'Success report links', 
         len(success_list)
     )
     print(
-        company, 
-        code, 
         'Failed report links', 
         len(failed_list)
     )
@@ -64,7 +56,7 @@ async def handle_dart_report_async_jobs(
             db.report_data_list.insert_many(success_list)
         except Exception as e:
             print(
-                f'Error while inserting report list {company} {code}' 
+                'Error while inserting report list ' 
                 + str(e)
             )
             if failed_list:
@@ -84,6 +76,7 @@ async def handle_dart_link_async_jobs(data: Dict, db: Database):
     post_data = {
         'code': data['code'], 
         'company': data['company'],
+        'start_date': data.get('start_date', None)
     }
     async with ClientSession() as session:
         async with session.post(

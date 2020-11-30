@@ -57,7 +57,47 @@ def test_prepare_report_list(mongodb, execution_date):
     for data in company_list:
         assert len(data['link_list']) >= 10
     
+
+@pytest.mark.report
+@pytest.mark.reportlinks
+@pytest.mark.reportlinksnew
+def test_prepare_company_only_recents(mongodb, execution_date):
+    request_list = [
+        {
+            'company': '제넥신', 
+            'code': 95700, 
+            'company_category': '자연과학 및 공학 연구개발업', 
+            'main_products': '항체융합단백질 치료제 및 유전자치료 백신개발', 
+            'register_date': '20090915', 
+            'accounting_month': '12월', 
+            'ceo_name': '성영철', 
+            'homepage': 'http://genexine.com', 
+            'region': '경기도'
+        }, 
+        {
+            'company': '디에스티', 
+            'code': 33430, 'company_category': '특수 목적용 기계 제조업', 
+            'main_products': '몰리브덴 등', 'register_date': '19980525', 
+            'accounting_month': '12월', 
+            'ceo_name': '김윤기, 양성문(각자 대표이사)', 
+            'homepage': 'http://www.korid.co.kr', 
+            'region': '경상남도'
+        }
+    ]
+    data_list = [CompanyReport(**x).to_json for x in request_list]
+    mongodb.company_list.insert_many(data_list)
+    handle_dart_jobs.prepare_company_links(
+        db_name=TestSettings.MONGODB_NAME, 
+        execution_date=execution_date,
+        only_recents=True
+    )
+    company_list = list(mongodb.company_list.find())
+    assert len(company_list) == len(request_list)
+    for data in company_list:
+        assert len(data['start_date']) == 8
+        assert len(data['link_list']) < 13
     
+
 @pytest.mark.reportapi
 @pytest.mark.report
 def test_reinsert_test(mongodb, execution_date):

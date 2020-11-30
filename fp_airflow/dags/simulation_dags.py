@@ -39,7 +39,8 @@ create_model_tasks = PythonOperator(
     depends_on_past=False,
     provide_context=True,
     op_kwargs={
-        'db_name': 'fp_data'
+        'db_name': 'fp_data',
+        'model_name': 'randomforest'
     },
 )
 
