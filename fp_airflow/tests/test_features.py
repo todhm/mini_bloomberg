@@ -9,7 +9,7 @@ def test_save_market_crawling_dates(longrunningdb, execution_date):
     request_list = [
         {
             "code": "2200", 
-            "corp_name": "한국수출포장공업"
+            "corp_name": "한국수출포장공업",
         }
     ]
     data_list = [CompanyReport(**x).to_json for x in request_list]

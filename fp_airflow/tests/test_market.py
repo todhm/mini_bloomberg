@@ -5,8 +5,10 @@ from utils.test_utils import create_market_data
 from datetime import datetime as dt, timedelta
 import fp_types
 import pandas as pd
+import pytest
 
 
+@pytest.mark.market
 def test_market_tasks(mongodb):
     db = mongodb
     execution_date = Pendulum.now()
@@ -41,6 +43,7 @@ def test_market_tasks(mongodb):
             assert data_count > 0
 
 
+@pytest.mark.market
 def test_save_market_crawling_dates(mongodb):
     db = mongodb
     execution_date = Pendulum.now()
@@ -64,6 +67,7 @@ def test_save_market_crawling_dates(mongodb):
     )
     
 
+@pytest.mark.market
 def test_save_market_crawling_with_inserted_db(mongodb):
     db = mongodb
     execution_date = Pendulum.now()
@@ -89,6 +93,31 @@ def test_save_market_crawling_with_inserted_db(mongodb):
         assert (
             dt.strftime(date, "%Y-%m-%d") == 
             dt.strftime(data_list[i], "%Y-%m-%d") 
-        )
-        
+        ) 
+
+
+@pytest.mark.market
+def test_save_recent_market_crawling_dates(mongodb):
+    db = mongodb
+    execution_date = Pendulum.now()
+    timestamp = int(execution_date.timestamp())
+    market_data_tasks.prepare_recent_market_tasks(
+        execution_date=Pendulum.now(),
+        db_name='testdb',
+    )
+    task_instance = db.airflow_task_list.find_one(
+        {"timestamp": timestamp}
+    )
+    assert task_instance['taskName'] == fp_types.MARKET_DATA_FETCH
+    assert task_instance['timestamp'] == timestamp
+    data_list = task_instance['dataList']
+    first_data = data_list[0]
+    last_data = data_list[-1]
+    print(first_data)
+    assert first_data > dt.now() - timedelta(days=20)
+    assert first_data < dt.now() - timedelta(days=10)
+    assert(
+        dt.strftime(last_data, "%Y-%m-%d") 
+        == dt.strftime(dt.now(), "%Y-%m-%d")
+    )
     

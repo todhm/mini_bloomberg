@@ -16,7 +16,7 @@ class CompanyReport:
     main_products: str = ""
     start_date: str = ''
     link_list: List[Dict] = field(default_factory=list)
-    register_date: dt = dt.now()
+    register_date: str = dt.strftime(dt.now(), '%Y%m%d')
         
     def __init__(self, *args, **kwargs):
         names = set([f.name for f in fields(self)])
