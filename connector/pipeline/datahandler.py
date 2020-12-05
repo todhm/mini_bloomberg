@@ -1,4 +1,5 @@
-from typing import Literal
+from datetime import datetime as dt
+from typing import Literal, Optional
 import pandas as pd
 from pymongo.database import Database
 from pandasql import sqldf
@@ -23,7 +24,7 @@ def return_local_sql(q, loc_object):
 
 def prepare_stock_df(stock_df: pd.DataFrame) -> pd.DataFrame:
     stock_df['stock_date'] = stock_df['Date']
-    stock_df.drop_duplicates(subset=['stock_date'], keep='first', inplace=True) 
+    stock_df.drop_duplicates(subset=['stock_date'], keep='last', inplace=True) 
     stock_df = stock_df.set_index('Date')       
     lags = [1, 5, 10]
     for lag in lags:
@@ -40,7 +41,9 @@ def prepare_stock_df(stock_df: pd.DataFrame) -> pd.DataFrame:
     return stock_df
 
 
-def prepare_period_numerics(df: pd.DataFrame, period: str) -> pd.DataFrame:
+def prepare_period_numerics(
+    df: pd.DataFrame, period: str, keep: Literal['first', 'last'] = 'first'
+) -> pd.DataFrame:
     key_list = [
         'cashflow_from_operation',
         'operational_income',
@@ -69,7 +72,7 @@ def prepare_period_numerics(df: pd.DataFrame, period: str) -> pd.DataFrame:
     df['reg_date'] = df[f'{period}_reg_date']
     df = df.sort_values('reg_date', ascending=True)
     df[f'{period}_report_year'] = df['reg_date'].apply(lambda x: x.year)
-    df = df.drop_duplicates(subset=[f'{period}_report_year'], keep='first')
+    df = df.drop_duplicates(subset=[f'{period}_report_year'], keep=keep)
     df.index = list(df[f'{period}_report_year'])
     df[f'last_{period}_assets'] = df[f'{period}_total_assets'].shift(1)
     df[f'last_{period}_longterm_debt'] = df[f'{period}_longterm_debt'].shift(1)
@@ -163,7 +166,6 @@ def prepare_period_numerics(df: pd.DataFrame, period: str) -> pd.DataFrame:
     period_key_list = [f'{period}_{x}' for x in key_list]
     col_list.extend(period_key_list)
     df = df[col_list]
-    # print(df[[f'{period}_book_value','reg_date']].head())
     return df
     
     
@@ -179,7 +181,16 @@ def prepare_report_data(df: pd.DataFrame, stock_df: pd.DataFrame):
     for period in ['yearly', 'march', 'september', 'june']:
         period_df = df[df['period_type'] == report_dict[period]]
         period_df = period_df.reset_index(drop=True)
-        period_df = prepare_period_numerics(period_df, period)
+        first_period_df = prepare_period_numerics(
+            period_df, period, keep='first'
+        )
+        last_period_df = prepare_period_numerics(
+            period_df, period, keep='last'
+        )
+        period_df = pd.concat([first_period_df, last_period_df])
+        period_df = period_df.drop_duplicates(
+            subset=['reg_date'], keep='first'
+        )
         pysqldf = return_local_sql
         cond_join = '''
             select
@@ -217,7 +228,8 @@ def save_pipeline_data(
         CONNECTED_FINANCIAL_STATEMENTS,
         NORMAL_FINANCIAL_STATEMENTS
     ],
-    code: str
+    code: str,
+    market_date: Optional[dt] = None,
 ):
     # print(report_type, code)
     df = prepare_report_data(df, stock_df)
@@ -252,6 +264,9 @@ def save_pipeline_data(
     except ValidationError as exc:
         errors = exc.messages
         raise ValueError(f"Validation error data {errors}")
-    db.ml_feature_list.delete_many({'code': code, "report_type": report_type})
+    delete_query = {'code': code, "report_type": report_type}
+    if market_date:
+        delete_query['stock_date'] = {'$gte': market_date}
+    db.ml_feature_list.delete_many(delete_query)
     db.ml_feature_list.insert_many(data_list)
 

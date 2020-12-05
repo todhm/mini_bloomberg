@@ -22,6 +22,7 @@ def longrunningdb() -> Database:
     yield db
     db.ml_model_result.drop()
     db.simulation_result.drop()
+    db.company_list.drop()
 
 
 @pytest.fixture()

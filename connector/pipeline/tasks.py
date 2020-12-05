@@ -1,8 +1,11 @@
 import logging
 import os
-from typing import Dict
+from datetime import datetime as dt
+from typing import Dict, Optional, Literal
+
 from pymongo import MongoClient
 import pandas as pd
+
 from celery_app import celery_app
 from pipeline.datahandler import (
     prepare_stock_df,
@@ -18,7 +21,16 @@ logger = logging.getLogger(__name__)
 
 
 @celery_app.task(bind=True, name='save_machinelearing_features_data')
-def save_machinelearing_features_data(self, code: str, db_name: str) -> Dict:
+def save_machinelearing_features_data(
+    self, 
+    code: str, 
+    db_name: str, 
+    report_type: Literal[
+        NORMAL_FINANCIAL_STATEMENTS,
+        CONNECTED_FINANCIAL_STATEMENTS
+    ] = NORMAL_FINANCIAL_STATEMENTS,
+    market_date: Optional[str] = None,
+) -> Dict:
     key_list = [
         'cashflow_from_operation',
         'operational_income',
@@ -43,9 +55,10 @@ def save_machinelearing_features_data(self, code: str, db_name: str) -> Dict:
     mongo_uri = os.environ.get("MONGO_URI")
     client = MongoClient(mongo_uri)
     db = client[db_name]
+    report_query = {"code": code, "report_type": report_type}
     success_list = list(
         db.report_data_list.find(
-            {"code": code}, 
+            report_query, 
             {"_id": False}
         )
     )
@@ -53,46 +66,32 @@ def save_machinelearing_features_data(self, code: str, db_name: str) -> Dict:
     df = df[key_list]
     df['reg_date'] = pd.to_datetime(df['reg_date'], infer_datetime_format=True)
     df = df.sort_values('reg_date', ascending=True)
-    connected_df = df[df['report_type'] == CONNECTED_FINANCIAL_STATEMENTS]
-    normal_df = df[df['report_type'] == NORMAL_FINANCIAL_STATEMENTS]
     stockcode = ''.zfill(6-len(str(code))) + str(code)
+    market_query = {"Code": stockcode}
+    if market_date:
+        market_date = dt.strptime(market_date, '%Y%m%d')
+        market_query['Date'] = {'$gte': market_date}
     data_list = list(
         db.market_data.find(
-            {"Code": stockcode}, 
+            market_query, 
             {"_id": False}
         )
     )
     stock_df = pd.DataFrame(data_list)
     stock_df = prepare_stock_df(stock_df)
-    success_list = []
-    failed_list = []
     try:
         save_pipeline_data(
             db,
-            normal_df,
+            df,
             stock_df,
-            NORMAL_FINANCIAL_STATEMENTS,
-            code
+            report_type,
+            code,
+            market_date=market_date,
         )
-        success_list.append(NORMAL_FINANCIAL_STATEMENTS)
+        client.close()
     except ValueError as ve:
-        failed_list.append(NORMAL_FINANCIAL_STATEMENTS)
-        logger.error(ve)
-    try:
-        save_pipeline_data(
-            db,
-            connected_df,
-            stock_df,
-            CONNECTED_FINANCIAL_STATEMENTS,
-            code
-        )
-        success_list.append(CONNECTED_FINANCIAL_STATEMENTS)
-    except ValueError as ve:
-        failed_list.append(CONNECTED_FINANCIAL_STATEMENTS)
-        logger.error(ve)    
-
-    client.close()
+        client.close()
+        raise ve
     return {
-        'success_list': success_list,
-        'failed_list': failed_list
+        'result': 'success'
     }

@@ -1,6 +1,7 @@
 from pymongo import MongoClient
 from task_connector.dart_airflow_connector import DartAirflowConnector
 from utils.celery_utils import execute_celery_tasks
+import fp_types
 import config
 
 
@@ -26,16 +27,26 @@ def create_machine_learning_features(
     for idx, data in enumerate(data_list):
         print(idx, data['company'], data['code'])
         code = str(data['code'])
-        celery_data = {
-            'db_name': db_name,
-            'code': code
-        }
-        try:
-            result = execute_celery_tasks(
-                taskFunc='save_machinelearing_features_data',
-                data=celery_data
-            )
-            print(data['company'], code, result)
-        except Exception as e:
-            print("Error occured", e, data['company'], code)
-            
+        for report_type in [
+            fp_types.NORMAL_FINANCIAL_STATEMENTS,
+            fp_types.CONNECTED_FINANCIAL_STATEMENTS
+        ]:
+            celery_data = {
+                'db_name': db_name,
+                'code': code,
+                'report_type': report_type
+            }
+            try:
+                result = execute_celery_tasks(
+                    taskFunc='save_machinelearing_features_data',
+                    data=celery_data
+                )
+                print(
+                    data['company'], 
+                    code, 
+                    result, 
+                    report_type
+                )
+            except Exception as e:
+                print("Error occured", e, data['company'], code, report_type)
+                

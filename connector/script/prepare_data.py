@@ -4,6 +4,7 @@ from pymongo import MongoClient
 import pandas as pd
 from pipeline.tasks import save_machinelearing_features_data
 from tests.lr_test_app import settings
+import fp_types
 
 
 def prepare_report_data():
@@ -24,10 +25,22 @@ def prepare_report_data():
     db.market_data.insert_many(stock_data_list)
     db.ml_feature_list.drop()
     _ = save_machinelearing_features_data(
-        "2200", settings.MONGODB_NAME
+        "2200", settings.MONGODB_NAME,
+        fp_types.NORMAL_FINANCIAL_STATEMENTS,
+    )
+    
+    _ = save_machinelearing_features_data(
+        "2200", settings.MONGODB_NAME,
+        fp_types.CONNECTED_FINANCIAL_STATEMENTS,
+    )
+    
+    _ = save_machinelearing_features_data(
+        "3490", settings.MONGODB_NAME, 
+        fp_types.NORMAL_FINANCIAL_STATEMENTS
     )
     _ = save_machinelearing_features_data(
-        "3490", settings.MONGODB_NAME
+        "3490", settings.MONGODB_NAME, 
+        fp_types.CONNECTED_FINANCIAL_STATEMENTS
     )
     client.close()
 
