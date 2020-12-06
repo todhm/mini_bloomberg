@@ -1,5 +1,7 @@
 import pytest
-from config import LongRunningTestSettings
+from config import (
+    SimulationTestSettings
+)
 from dataclass_models.models import (
     TaskArgumentsList,
     MlModel
@@ -10,15 +12,15 @@ import fp_types
 
 @pytest.mark.ml
 @pytest.mark.ml_model
-def test_save_ml_models(longrunningdb, execution_date):
+def test_save_ml_models(simulationdb, execution_date):
     ml_models_tasks.create_machine_learning_models(
-        db_name=LongRunningTestSettings.MONGODB_NAME, 
+        db_name=SimulationTestSettings.MONGODB_NAME, 
         execution_date=execution_date,
     )
     ts = execution_date.timestamp()
     ts = int(ts)
     data_list = TaskArgumentsList.fetch_total_arguments(
-        longrunningdb,
+        simulationdb,
         taskName=fp_types.SIMULATE_WITH_ML_MODELS,
         timestamp=ts,
     )
@@ -28,7 +30,7 @@ def test_save_ml_models(longrunningdb, execution_date):
         assert len(data['model_params'].keys()) > 0
         assert data['model_performance']['MSE'] > 0
         assert len(mldata.model_name) > 0
-        model_result = longrunningdb.ml_model_result.find_one({
+        model_result = simulationdb.ml_model_result.find_one({
             "model_name": mldata.model_name
         })
         assert model_result is not None
@@ -36,7 +38,7 @@ def test_save_ml_models(longrunningdb, execution_date):
 
 @pytest.mark.ml
 @pytest.mark.simulation
-def test_make_simulations(longrunningdb, execution_date):
+def test_make_simulations(simulationdb, execution_date):
     test_model_list = [
         {
             'model_name': 'test_randomforest_normal20201101224257.joblib',
@@ -57,20 +59,20 @@ def test_make_simulations(longrunningdb, execution_date):
     ]
     for data in test_model_list:
         mldata = MlModel(**data)
-        mldata.save(longrunningdb.ml_model_result)
+        mldata.save(simulationdb.ml_model_result)
     ts = execution_date.timestamp()
     ts = int(ts)
     ta = TaskArgumentsList(
         timestamp=ts, 
         dataList=test_model_list, taskName=fp_types.SIMULATE_WITH_ML_MODELS
     )
-    ta.save(longrunningdb)
+    ta.save(simulationdb)
     ml_models_tasks.create_simulation_results(
-        db_name=LongRunningTestSettings.MONGODB_NAME, 
+        db_name=SimulationTestSettings.MONGODB_NAME, 
         execution_date=execution_date,
     )
     result_list = list(
-        longrunningdb.simulation_result.find(
+        simulationdb.simulation_result.find(
            {}, {"_id": False}
         )
     )

@@ -18,7 +18,12 @@ class TestSettings(BaseSettings):
 class LongRunningTestSettings(BaseSettings):
     DEBUG: bool = True
     MONGODB_NAME: str = 'longrunning'
-    
+
+
+class SimulationTestSettings(BaseSettings):
+    DEBUG: bool = True
+    MONGODB_NAME: str = 'simulation'
+
 
 class ProductionSettings(BaseSettings):
     DEBUG: bool = True

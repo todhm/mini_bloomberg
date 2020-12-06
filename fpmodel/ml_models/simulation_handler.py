@@ -74,6 +74,7 @@ class SimulationHandler(object):
                 multi_index_df,
                 total_budget
             )  
+            
         except Exception as e:
             raise ValueError(
                 f"Error while making simulation {str(e)}"

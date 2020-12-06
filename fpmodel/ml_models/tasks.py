@@ -88,7 +88,6 @@ def simulate_model_result(
     client = MongoClient(mongo_uri)
     db = client[db_name]
     try:
-        print(db, model_name)
         sml = SimulationHandler(
             db=db,
             model_name=model_name,

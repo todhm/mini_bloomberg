@@ -3,6 +3,7 @@ from pymongo import MongoClient
 from pymongo.database import Database
 from tests.test_app import settings
 from tests.lr_test_app import settings as lrsettings
+from tests.simulation_test_app import settings as stsettings
 
 
 @pytest.fixture()
@@ -24,3 +25,12 @@ def longrunningmongo() -> Database:
     db.simulation_result.drop()
     client.close()
     
+
+@pytest.fixture()
+def simulationmongo() -> Database:
+    client = MongoClient(stsettings.MONGO_URI)
+    db = client[stsettings.MONGODB_NAME]
+    yield db
+    db.ml_model_result.drop()
+    db.simulation_result.drop()
+    client.close()

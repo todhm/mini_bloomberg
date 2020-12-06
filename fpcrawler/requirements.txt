@@ -17,6 +17,7 @@ demjson==2.2.4
 execnet==1.7.1
 fastapi==0.61.1
 finance-datareader==0.9.1
+fp-types==1.0.3
 googletrans==2.3.0
 gspread==3.1.0
 gunicorn==19.9.0

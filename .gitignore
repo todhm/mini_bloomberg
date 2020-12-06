@@ -12,3 +12,7 @@ docker-compose-google.yml
 .vscode
 marcap
 commands
+dist
+build
+*.egg-info
+mlfiles

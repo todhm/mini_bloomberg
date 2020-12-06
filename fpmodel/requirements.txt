@@ -13,6 +13,7 @@ click-didyoumean==0.0.3
 click-repl==0.1.6
 execnet==1.7.1
 fastapi==0.61.1
+fp-types==1.0.3
 h11==0.11.0
 idna==2.8
 iniconfig==1.0.1
