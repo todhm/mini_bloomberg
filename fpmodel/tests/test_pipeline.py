@@ -1,6 +1,6 @@
 import logging
-from datetime import datetime as dt, timedelta
 import pytest
+from datetime import datetime as dt
 from tests.lr_test_app import settings, client
 from celery import states
 from models.schema import MachineLearningSaveSchema
@@ -76,10 +76,7 @@ def test_company_pipeline_with_date(longrunningmongo):
         .find_one({}, {'Date': 1}, sort=[('Date', -1)])
     )
     latest_date = market_data['Date']
-    latest_date -= timedelta(days=21)
-    report_date = latest_date - timedelta(days=730)
     latest_date = dt.strftime(latest_date, '%Y%m%d')
-    report_date = dt.strftime(report_date, '%Y%m%d')
     result = save_machinelearing_features_data(
         test_company_code, 
         settings.MONGODB_NAME,

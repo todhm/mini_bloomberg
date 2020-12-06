@@ -24,6 +24,7 @@ def return_local_sql(q, loc_object):
 
 def prepare_stock_df(stock_df: pd.DataFrame) -> pd.DataFrame:
     stock_df['stock_date'] = stock_df['Date']
+    stock_df['Marcap_lag'] = stock_df['Marcap'].shift(1)
     stock_df.drop_duplicates(subset=['stock_date'], keep='last', inplace=True) 
     stock_df = stock_df.set_index('Date')       
     lags = [1, 5, 10]
@@ -177,7 +178,6 @@ def prepare_report_data(df: pd.DataFrame, stock_df: pd.DataFrame):
         'june': SEMINUAL_REPORT
     }
     joined_df = stock_df
-    joined_df['Marcap_lag'] = joined_df['Marcap'].shift(1)
     for period in ['yearly', 'march', 'september', 'june']:
         period_df = df[df['period_type'] == report_dict[period]]
         period_df = period_df.reset_index(drop=True)

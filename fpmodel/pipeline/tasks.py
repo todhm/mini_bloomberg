@@ -2,9 +2,11 @@ import logging
 import os
 from datetime import datetime as dt
 from typing import Dict, Optional, Literal
+from math import ceil
 
 from pymongo import MongoClient
 import pandas as pd
+from workalendar.asia import SouthKorea
 
 from celery_app import celery_app
 from pipeline.datahandler import (
@@ -55,7 +57,33 @@ def save_machinelearing_features_data(
     mongo_uri = os.environ.get("MONGO_URI")
     client = MongoClient(mongo_uri)
     db = client[db_name]
+
+    # Prepare Query
     report_query = {"code": code, "report_type": report_type}
+    stockcode = ''.zfill(6-len(str(code))) + str(code)
+    market_query = {"Code": stockcode}
+    if market_date:
+        market_date = dt.strptime(market_date, '%Y%m%d')
+        ca = SouthKorea()
+        market_start_date = ca.add_working_days(market_date, -11)
+        market_start_date = dt(
+            market_start_date.year, 
+            market_start_date.month, 
+            market_start_date.day
+        )
+        market_query['Date'] = {'$gte': market_start_date}
+
+        two_years_days = ceil(365.25 * 2)
+        report_start_date = ca.add_working_days(
+            market_start_date, two_years_days * -1
+        )
+        report_start_date = dt(
+            report_start_date.year, 
+            report_start_date.month, 
+            report_start_date.day
+        )
+        report_query['reg_date'] = {'$gte': report_start_date}
+
     success_list = list(
         db.report_data_list.find(
             report_query, 
@@ -66,11 +94,7 @@ def save_machinelearing_features_data(
     df = df[key_list]
     df['reg_date'] = pd.to_datetime(df['reg_date'], infer_datetime_format=True)
     df = df.sort_values('reg_date', ascending=True)
-    stockcode = ''.zfill(6-len(str(code))) + str(code)
-    market_query = {"Code": stockcode}
-    if market_date:
-        market_date = dt.strptime(market_date, '%Y%m%d')
-        market_query['Date'] = {'$gte': market_date}
+
     data_list = list(
         db.market_data.find(
             market_query, 
