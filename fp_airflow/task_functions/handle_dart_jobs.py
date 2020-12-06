@@ -103,7 +103,6 @@ def insert_company_data_list(
         start_idx=start_idx, 
         total_task_count=total_task_count,
     )
-
     total_request_list = dac.return_insert_needed_link_list()
     chunknum = 10
     total_request_list = [

@@ -29,7 +29,7 @@ default_args = {
 }
 
 dag = DAG(
-    'dart_dag', 
+    'recent_dart_dag', 
     default_args=default_args, 
     schedule_interval=None, 
     concurrency=15, 
@@ -38,15 +38,15 @@ dag = DAG(
 
 
 company_prepare_tasks = PythonOperator(
-        task_id='company_prepare_tasks',
-        python_callable=handle_dart_jobs.prepare_company_report_list,
-        dag=dag,
-        depends_on_past=False,
-        provide_context=True,
-        op_kwargs={
-         'db_name': ProductionSettings.MONGODB_NAME,
-        },
-    )
+    task_id='company_prepare_tasks',
+    python_callable=handle_dart_jobs.prepare_company_report_list,
+    dag=dag,
+    depends_on_past=False,
+    provide_context=True,
+    op_kwargs={
+        'db_name': ProductionSettings.MONGODB_NAME,
+    },
+)
 
 total_number = 2
 save_report_job_list = []
@@ -92,7 +92,7 @@ market_prepare_job = PythonOperator(
     },
 )
 for srj in save_report_job_list:
-    srj.set_upstream(market_prepare_job)
+    market_prepare_job.set_upstream(srj)
 
 total_number = 15
 market_job_list = []

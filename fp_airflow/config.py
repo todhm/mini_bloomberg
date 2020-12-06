@@ -6,7 +6,7 @@ class BaseSettings:
     DEBUG: bool = False
     MONGO_URI: str = os.environ.get("MONGO_URI")
     CRAWLER_URI: str = os.environ.get("FPCRAWLER_URL")
-    CONNECTOR_URI: str = os.environ.get("CONNECTOR_URL")
+    FPMODEL_URI: str = os.environ.get("FPMODEL_URL")
     MONGODB_NAME: str = 'fp_data'
 
 

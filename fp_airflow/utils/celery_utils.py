@@ -14,9 +14,9 @@ def execute_celery_tasks(
         "taskFunc": taskFunc,
         "data": data
     }
-    connector_url = config.BaseSettings.CONNECTOR_URI
+    fpmodel_url = config.BaseSettings.FPMODEL_URI
     response = requests.post(
-        f"{connector_url}/launch_celery_tasks", 
+        f"{fpmodel_url}/launch_celery_tasks", 
         json=post_data
     )
     if response.status_code != 200:
@@ -25,7 +25,7 @@ def execute_celery_tasks(
     
     task_data = response.json()
     task_id = task_data['taskId']
-    task_url = f"{connector_url}/tasks/{task_id}"
+    task_url = f"{fpmodel_url}/tasks/{task_id}"
     start_count = 0
     while start_count < max_counts:
         response = requests.get(task_url)
