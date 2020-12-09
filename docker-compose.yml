@@ -5,7 +5,6 @@ services:
     image: redis:4.0.11
     networks:
       - message
-
   fp_mongo:
     container_name: fp_mongo
     image: mongo:4.1.7-xenial
@@ -15,7 +14,7 @@ services:
       - mdb-data:/data/db
     networks:
       - backend
-      
+
   fp_postgres:
     image: fidelkang/fp_postgres
     build:
@@ -47,7 +46,6 @@ services:
     depends_on:
       - fp_redis
       - fp_mongo
-
     networks:
       - backend
       - message
@@ -61,7 +59,7 @@ services:
     volumes:
       - './fp_portfolio:/usr/src/app'
       - ./datacollections:/usr/src/app/datacollections
-    command:  uvicorn main:app --reload --host 0.0.0.0 --port 9000 --log-level debug
+    command:  python manage.py run -h 0.0.0.0 -p 9000
     ports:
       - 9000:9000
     env_file:
@@ -144,7 +142,6 @@ services:
         timeout: 30s
         retries: 3
 
-    
 volumes:
   media:
   mdb-data:
@@ -155,8 +152,3 @@ networks:
   logging:
   message:
   airflow_backend:
-
-
-configs:
-  logstash.conf:
-    external: true
