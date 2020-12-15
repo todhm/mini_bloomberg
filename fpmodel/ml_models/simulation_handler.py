@@ -151,7 +151,7 @@ class SimulationHandler(object):
                 < self.maximum_sell_diff
             ):
                 limit_price = (
-                    multi_index_df['Close'][code][index] 
+                    multi_index_df['predicted_value'][code][index] 
                     * (1 + self.maximum_sell_diff)
                 )
                 stock_count = spd.count
@@ -184,8 +184,11 @@ class SimulationHandler(object):
                 ) 
             ):
                 close_price = multi_index_df['Close'][code][index]
+                predicted_price = (
+                    multi_index_df['predicted_value'][code][index]
+                )
                 limit_price = (
-                    close_price
+                    predicted_price
                     * (1 + self.minimum_purchase_diff)
                 )
                 buy_possess = RecommendBuyStock(
