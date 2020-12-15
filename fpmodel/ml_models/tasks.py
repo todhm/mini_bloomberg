@@ -1,12 +1,15 @@
+from datetime import datetime as dt
 import logging
 import os
 from typing import Dict, List
+
 from pymongo import MongoClient
 from sklearn.ensemble import RandomForestRegressor
 from celery_app import celery_app
 from ml_models.datahandler import save_model_results
 from ml_models.simulation_handler import SimulationHandler
-from fp_types import (
+from ml_models.recommendation import RecommendationHandler
+from fp_common.fp_types import (
     CONNECTED_FINANCIAL_STATEMENTS,
     NORMAL_FINANCIAL_STATEMENTS,
 )
@@ -91,10 +94,11 @@ def simulate_model_result(
         sml = SimulationHandler(
             db=db,
             model_name=model_name,
-            minmum_purchase_diff=0.15,
+            minimum_purchase_diff=0.15,
             maximum_sell_diff=0.01,
             initial_total_budget=3000000,
-            single_purchase_amount=20
+            single_purchase_amount=20,
+            topstock_limit=3
         )
         result = sml.simulate_model_result()
     except Exception as e:
@@ -107,3 +111,33 @@ def simulate_model_result(
         raise e
     client.close()
     return result
+
+
+@celery_app.task(bind=True, name='save_recommendations')
+def save_recommendation(
+    self, 
+    db_name: str, 
+    stock_date: str,
+    portfolio_id: str,
+) -> Dict:
+    mongo_uri = os.environ.get("MONGO_URI")
+    client = MongoClient(mongo_uri)
+    db = client[db_name]
+    try:
+        date = dt.strptime(stock_date, '%Y%m%d')
+        rh = RecommendationHandler(
+            db=db,
+            portfolio_id=portfolio_id,
+            date=date
+        )
+        _ = rh.save_current_recommendation()
+    except Exception as e:
+        error_message = (
+            "Error while saving recommendation "
+            f"{str(e)}"
+        )
+        logger.error(error_message)
+        client.close()
+        raise e
+    client.close()
+    return {'result': 'success'}

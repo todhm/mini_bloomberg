@@ -2,7 +2,7 @@ import pandas as pd
 from pandasql import sqldf
 from pandasql import sqldf
 import numpy as np
-from fp_types import (
+from fp_common.fp_types import (
     NORMAL_FINANCIAL_STATEMENTS,
     YEARLY_REPORT
 )

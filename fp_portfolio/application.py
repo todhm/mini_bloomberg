@@ -1,7 +1,13 @@
 from flask import Flask
 from flask_admin import Admin
 from flask_cors import CORS
+from flask_admin.contrib.mongoengine import (
+    ModelView
+)
+
 from portfolio.routers import portfolio_app
+from portfolio.models import Portfolio, SimulationResult
+from portfolio.admin import PortfolioView
 
 
 def create_app(config_object='config.DevelopmentConfig', **config_overrides):
@@ -15,6 +21,8 @@ def create_app(config_object='config.DevelopmentConfig', **config_overrides):
 
     # set up extensions
     admin.init_app(app)
+    admin.add_view(PortfolioView(Portfolio, name='portfolio'))
+    admin.add_view(ModelView(SimulationResult, name='simulation_result'))
 
     app.register_blueprint(portfolio_app)
 

@@ -5,7 +5,7 @@ from tests.lr_test_app import settings, client
 from celery import states
 from models.schema import MachineLearningSaveSchema
 from pipeline.tasks import save_machinelearing_features_data
-import fp_types
+from fp_common import fp_types
 
 
 logger = logging.getLogger(__name__)

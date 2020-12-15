@@ -1,6 +1,6 @@
 
-from fp_types.errors import BULK_DATA_FAILED,NO_DATA
-from fp_types.apitypes import BULK_DATA_WRITE
+from fp_common.fp_types.errors import BULK_DATA_FAILED, NO_DATA
+from fp_common.fp_types.apitypes import BULK_DATA_WRITE
 
 
 def bulk_mongo_upserts(

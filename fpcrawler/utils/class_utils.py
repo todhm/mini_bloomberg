@@ -5,7 +5,7 @@ import unittest
 import aiohttp
 from aiohttp import ClientSession, ClientTimeout, TCPConnector
 from utils.log_utils import log_factory
-from fp_types.errors import NO_DATA, REQUEST_ERROR
+from fp_common.fp_types.errors import NO_DATA, REQUEST_ERROR
 from collections.abc import Iterable
 
 

@@ -6,7 +6,7 @@ from pathlib import Path
 from setuptools import find_packages, setup
 
 # Package meta-data.
-NAME = 'fp_types'
+NAME = 'fp_common'
 DESCRIPTION = "Common Module and utils for my fp packages"
 URL = "https://github.com/todhm/mini_bloomberg"
 EMAIL = "gmlaud14@gmail.com"
@@ -30,7 +30,7 @@ long_description = DESCRIPTION
 # Load the package's VERSION file as a dictionary.
 about = {}
 ROOT_DIR = Path(__file__).resolve().parent
-PACKAGE_DIR = ROOT_DIR / 'fp_types'
+PACKAGE_DIR = ROOT_DIR / 'fp_common'
 with open(PACKAGE_DIR / "VERSION") as f:
     _version = f.read().strip()
     about["__version__"] = _version
@@ -49,7 +49,7 @@ setup(
     url=URL,
     packages=find_packages(exclude=("tests",)),
     package_data={"gradient_boosting_model": ["VERSION"]},
-    install_requires=list_reqs(),
+    install_requires=list_reqs(fname='requirements.txt'),
     extras_require={},
     include_package_data=True,
     license="BSD-3",
@@ -66,3 +66,4 @@ setup(
         "Programming Language :: Python :: Implementation :: PyPy",
     ],
 )
+

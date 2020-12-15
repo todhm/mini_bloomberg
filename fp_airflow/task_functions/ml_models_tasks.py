@@ -1,9 +1,11 @@
 import os
+
 from pymongo import MongoClient
+from fp_common import fp_types
+
 from utils.celery_utils import execute_celery_tasks
 from dataclass_models.models import TaskArgumentsList
 import config
-import fp_types
 
 
 def create_machine_learning_models(

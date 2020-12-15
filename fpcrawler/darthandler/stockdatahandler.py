@@ -19,7 +19,7 @@ from utils.mongo_utils import bulk_mongo_inserts,bulk_first_mongo_inserts
 from utils.api_utils import return_async_get
 from utils.crawl_utils import get_crawl_soup,run_spider
 from utils import get_kbd_diff,timestamp
-from fp_types import REQUEST_ERROR,BULK_DATA_FAILED,NO_DATA,NO_META_DATA\
+from fp_common.fp_types import REQUEST_ERROR,BULK_DATA_FAILED,NO_DATA,NO_META_DATA\
                      ,CRAWL_PARSE_ERROR,BULK_DATA_WRITE,DAILY_STOCK_DATA_RESULT,\
                      DAILY_STOCK_DATA
 

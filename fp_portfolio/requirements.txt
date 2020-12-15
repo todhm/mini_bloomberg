@@ -4,6 +4,7 @@ Flask==1.1.1
 flask-apispec==0.7.0
 flask-mongoengine==0.9.5
 Flask-Cors==3.0.8
+fp-common==1.0.0
 marshmallow==3.8.0
 gunicorn==19.9.0
 pytest==6.1.1

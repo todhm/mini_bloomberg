@@ -3,7 +3,7 @@ from pendulum import Pendulum
 from dataclass_models.models import TaskArgumentsList
 from utils.test_utils import create_market_data
 from datetime import datetime as dt, timedelta
-import fp_types
+from fp_common import fp_types
 import pandas as pd
 import pytest
 

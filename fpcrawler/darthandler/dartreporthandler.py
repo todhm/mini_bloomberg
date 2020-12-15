@@ -12,7 +12,7 @@ from .dartdataparsehandler import (
     return_financial_report_table
 )
 from .dartdriverparsinghandler import return_driver_report_data
-from fp_types import (
+from fp_common.fp_types import (
     petovski_balancesheet_dict,
     petovski_cash_dict,
     petovski_income_statement_dict,

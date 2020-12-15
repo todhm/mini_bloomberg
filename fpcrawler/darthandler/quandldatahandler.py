@@ -1,7 +1,7 @@
 from utils.class_utils import DataHandlerClass
 from utils.mongo_utils import bulk_mongo_inserts,bulk_first_mongo_inserts
 from utils.api_utils import return_async_get
-from fp_types import REQUEST_ERROR,BULK_DATA_FAILED,NO_DATA,NO_META_DATA,\
+from fp_common.fp_types import REQUEST_ERROR,BULK_DATA_FAILED,NO_DATA,NO_META_DATA,\
                      BULK_DATA_WRITE,QUANDL_META_DATA,QUANDL_STAT_DATA
 import asyncio
 import aiohttp

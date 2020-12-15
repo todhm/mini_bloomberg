@@ -1,7 +1,7 @@
 from pymongo import MongoClient
 from task_connector.dart_airflow_connector import DartAirflowConnector
 from utils.celery_utils import execute_celery_tasks
-import fp_types
+from fp_common import fp_types
 import config
 
 

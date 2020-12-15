@@ -6,6 +6,5 @@ PASSWORD:=UPDATEME
 
 build:
 	PYTHONPATH=. python3 setup.py sdist bdist_wheel
-
 deploy:
 	PYTHONPATH=. python -m twine upload --skip-existing --repository pypi dist/*

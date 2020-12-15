@@ -5,13 +5,13 @@ from pymongo.database import Database
 from pandasql import sqldf
 from marshmallow import ValidationError
 from models.schema import MachineLearningSaveSchema
-from fp_types import (
+from fp_common.fp_types import (
     YEARLY_REPORT,
     MARCH_REPORT,
     SEPTEMBER_REPORT,
     SEMINUAL_REPORT
 )
-from fp_types import (
+from fp_common.fp_types import (
     CONNECTED_FINANCIAL_STATEMENTS,
     NORMAL_FINANCIAL_STATEMENTS,
     feature_list,

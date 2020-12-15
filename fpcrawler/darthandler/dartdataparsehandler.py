@@ -3,7 +3,7 @@ import lxml.html as LH
 import re
 from bs4 import BeautifulSoup
 import copy
-from fp_types import (
+from fp_common.fp_types import (
     none_minus_keys,
     CONNECTED_BALANCE_RE,
     CONNECTED_CASHFLOW_RE,

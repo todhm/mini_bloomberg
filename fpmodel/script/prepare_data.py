@@ -5,7 +5,7 @@ import pandas as pd
 from pipeline.tasks import save_machinelearing_features_data
 from tests.lr_test_app import settings
 from tests.simulation_test_app import settings as stsettings
-import fp_types
+from fp_common import fp_types
 
 
 def prepare_report_data():

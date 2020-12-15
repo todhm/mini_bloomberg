@@ -13,7 +13,7 @@ from pipeline.datahandler import (
     prepare_stock_df,
     save_pipeline_data
 )
-from fp_types import (
+from fp_common.fp_types import (
     CONNECTED_FINANCIAL_STATEMENTS,
     NORMAL_FINANCIAL_STATEMENTS,
 )

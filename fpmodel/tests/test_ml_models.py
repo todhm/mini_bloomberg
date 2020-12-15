@@ -2,9 +2,9 @@ import pytest
 from tests.simulation_test_app import settings
 from models.dataclass_models import (
     MlModel,
-    Strategy
+    Simulation
 )
-from fp_types import (
+from fp_common.fp_types import (
     NORMAL_FINANCIAL_STATEMENTS,
     CONNECTED_FINANCIAL_STATEMENTS
 )
@@ -69,7 +69,7 @@ def test_simulate_model(simulationmongo):
     )
     assert len(result_list) == 2
     for result in result_list:
-        sldata = Strategy(
+        sldata = Simulation(
             **result
         )
         performance = sldata.strategy_performance

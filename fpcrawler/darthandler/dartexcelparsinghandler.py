@@ -1,7 +1,7 @@
 import re
 import copy
 from typing import List
-from fp_types import (
+from fp_common.fp_types import (
     BALANCE_RE,
     INCOME_RE,
     CASHFLOW_RE,

@@ -33,4 +33,6 @@ def simulationmongo() -> Database:
     yield db
     db.ml_model_result.drop()
     db.simulation_result.drop()
+    db.portfolio.drop()
+    db.recommendations.drop()
     client.close()

@@ -4,7 +4,7 @@ from selenium import webdriver
 from selenium.webdriver.remote.webelement import WebElement
 from utils.crawl_utils import return_driver
 from utils import exception_utils
-from fp_types import (
+from fp_common.fp_types import (
     petovski_cash_dict,
     petovski_balancesheet_dict,
     cashflow_data_re_list,

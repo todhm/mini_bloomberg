@@ -6,7 +6,7 @@ import pandas as pd
 from workalendar.asia import SouthKorea
 from dataclass_models.models import TaskArgumentsList
 from utils.marketdatahandler import save_api_market_data
-import fp_types
+from fp_common import fp_types
 import os
 
 

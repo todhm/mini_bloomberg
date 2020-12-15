@@ -7,7 +7,7 @@ from dataclass_models.models import (
     MlModel
 )
 from task_functions import ml_models_tasks
-import fp_types
+from fp_common import fp_types
 
 
 @pytest.mark.ml

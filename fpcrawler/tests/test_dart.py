@@ -1,5 +1,5 @@
 from datetime import timedelta, datetime as dt
-import fp_types
+from fp_common import fp_types
 import pytest
 from tests.test_app import client
 from dartapp.forms import ReportDict

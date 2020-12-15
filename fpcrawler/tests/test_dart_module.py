@@ -9,7 +9,7 @@ from darthandler.dartdatahandler import DartDataHandler
 from darthandler.dartexcelparsinghandler import DartExcelParser
 from darthandler import dartdriverparsinghandler
 from darthandler.dartreporthandler import DartReportHandler
-from fp_types import (
+from fp_common.fp_types import (
     YEARLY_REPORT, 
     QUARTER_REPORT, 
     MARCH_REPORT,

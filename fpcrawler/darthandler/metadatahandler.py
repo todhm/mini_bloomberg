@@ -1,7 +1,7 @@
 from utils.class_utils import DataHandlerClass
 from utils.mongo_utils import bulk_mongo_inserts
 from utils.api_utils import return_async_get
-from fp_types import * 
+from fp_common.fp_types import * 
 import asyncio
 import aiohttp
 import requests

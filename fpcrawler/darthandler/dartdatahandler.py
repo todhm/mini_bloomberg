@@ -13,7 +13,7 @@ from utils import exception_utils
 from aiohttp import (
     ClientSession,
 )
-from fp_types import (
+from fp_common.fp_types import (
     YEARLY_REPORT, 
     QUARTER_REPORT,
     SEMINUAL_REPORT,
@@ -28,7 +28,7 @@ from .dartdataparsehandler import (
 )
 from .dartreporthandler import DartReportHandler
 from .dartexcelparsinghandler import DartExcelParser
-import fp_types
+from fp_common import fp_types
 
 
 logger = logging.getLogger()

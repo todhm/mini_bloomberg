@@ -1,7 +1,7 @@
 import random
 from datetime import datetime as dt
 from math import ceil
-from fp_types import (
+from fp_common.fp_types import (
     CONNECTED_FINANCIAL_STATEMENTS,
     NORMAL_FINANCIAL_STATEMENTS,
     feature_list
