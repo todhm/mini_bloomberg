@@ -1,6 +1,6 @@
 import json
 from datetime import datetime as dt
-from aiohttp import ClientSession
+from aiohttp import ClientSession, ClientTimeout
 from dataclass_models.models import (
     CompanyReport
 )
@@ -17,7 +17,8 @@ async def handle_dart_report_async_jobs(
     link_url = os.environ.get("FPCRAWLER_URL")
     report_url = f'{link_url}/report'
     post_data = {'linkList': link_list}
-    async with ClientSession() as session:
+    timeout = ClientTimeout(total=30)
+    async with ClientSession(timeout=timeout) as session:
         async with session.post(
             report_url, 
             json=post_data, 
@@ -78,7 +79,8 @@ async def handle_dart_link_async_jobs(data: Dict, db: Database):
         'company': data['company'],
         'start_date': data.get('start_date', None)
     }
-    async with ClientSession() as session:
+    timeout = ClientTimeout(total=10)
+    async with ClientSession(timeout=timeout) as session:
         async with session.post(
             report_url, 
             json=post_data, 

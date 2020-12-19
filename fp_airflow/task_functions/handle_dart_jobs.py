@@ -79,9 +79,9 @@ def prepare_company_links(
         ]
         all_results = asyncio.gather(*async_list, return_exceptions=True)
         results = loop.run_until_complete(all_results)
-    for r in results:
-        if isinstance(r, Exception):
-            print(r) 
+        for r in results:
+            if isinstance(r, Exception):
+                print(r) 
     loop.close()
 
         
@@ -126,7 +126,7 @@ def insert_company_data_list(
         ]
         all_results = asyncio.gather(*async_list, return_exceptions=True)
         results = loop.run_until_complete(all_results)
-    for r in results:
-        if isinstance(r, Exception):
-            print(r) 
+        for r in results:
+            if isinstance(r, Exception):
+                print(r) 
     loop.close()

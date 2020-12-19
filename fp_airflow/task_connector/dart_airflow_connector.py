@@ -52,7 +52,8 @@ class DartAirflowConnector(object):
             )
         data_list = list(search_table_results)
         for x in data_list:
-            x['register_date'] = dt.strftime(x['register_date'], '%Y%m%d')
+            if type(x['register_date']) is not str:
+                x['register_date'] = dt.strftime(x['register_date'], '%Y%m%d')
         return data_list
 
     def return_insert_needed_link_list(
@@ -112,7 +113,7 @@ class DartAirflowConnector(object):
             )
         data_list = list(search_table_results)
         for x in data_list:
-            recent_report_data = self.db.company_report_list.find_one(
+            recent_report_data = self.db.report_data_list.find_one(
                 {'code': str(x['code'])},
                 {'reg_date': 1},
                 sort=[('reg_date', -1)]
@@ -127,5 +128,6 @@ class DartAirflowConnector(object):
             else:
                 recent_max_date = start_period_time
             x['start_date'] = dt.strftime(recent_max_date, '%Y%m%d')
-            x['register_date'] = dt.strftime(x['register_date'], '%Y%m%d')
+            if type(x['register_date']) is not str:
+                x['register_date'] = dt.strftime(x['register_date'], '%Y%m%d')
         return data_list

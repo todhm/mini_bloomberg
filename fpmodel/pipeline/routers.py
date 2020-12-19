@@ -33,8 +33,15 @@ async def tasks_get(task_id: str):
     try:
         res = AsyncResult(task_id)
         state = res.state
-        result = res.result
-        return JSONResponse({'state': state, 'data': result})
+        try:
+            result = res.result
+            return JSONResponse({'state': state, 'data': result})
+        except Exception:
+            result = str(res.result)
+            return JSONResponse(
+                {'errorMessage': result},
+                status_code=400
+            )
     except Exception as e: 
         return JSONResponse(
             {'errorMessage': str(e)},

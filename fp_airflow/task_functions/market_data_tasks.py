@@ -92,7 +92,13 @@ def prepare_recent_market_tasks(
         today_date = dt.strptime(dt.strftime(dt.now(), '%Y%m%d'), '%Y%m%d')
         if start_date >= today_date:
             return True
-        start_date = max(start_working_days, start_date)
+        start_date = max(
+            dt.strptime(
+                start_working_days.strftime('%Y%m%d'),
+                '%Y%m%d'
+            ), 
+            start_date
+        )
     else:
         start_date = start_working_days
     start_date = dt.strftime(start_date, '%Y-%m-%d')

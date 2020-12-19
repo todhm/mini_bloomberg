@@ -1,4 +1,4 @@
-from datetime import datetime as dt, timedelta
+from datetime import datetime as dt
 
 from bson.objectid import ObjectId
 from pymongo.database import Database
@@ -52,9 +52,8 @@ class RecommendationHandler(object):
 
     def save_current_recommendation(self) -> None:
         try:
-            dfdate = self.date - timedelta(days=1)
             multi_index_df, grouped = self.smh.prepare_recommendation_table(
-                date=dfdate
+                date=self.date
             )
         except Exception as e:
             error_message = f"Error while preparing df {str(e)}" 

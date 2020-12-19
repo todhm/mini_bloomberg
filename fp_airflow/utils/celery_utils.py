@@ -8,7 +8,7 @@ def execute_celery_tasks(
     taskFunc: str = "",
     data: Dict = {},
     max_counts: int = 10000,
-    tick_time: int = 2.5
+    tick_time: float = 1.0
 ) -> Dict:
     post_data = {
         "taskFunc": taskFunc,

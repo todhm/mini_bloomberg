@@ -14,7 +14,7 @@ from fp_common import fp_types
 logger = logging.getLogger(__name__)
 
 
-@pytest.mark.recommendation
+@pytest.mark.recommend
 def test_recommendation(simulationmongo):
     # final_date = simulationmong
     model_name = 'test_randomforest_normal20201101224257.joblib'

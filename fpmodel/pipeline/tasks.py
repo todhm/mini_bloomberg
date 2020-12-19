@@ -115,7 +115,13 @@ def save_machinelearing_features_data(
         client.close()
     except ValueError as ve:
         client.close()
-        raise ve
+        error_message = (
+            "Error while make ml data "
+            f"{code} {report_type} {market_date} "
+            f"{str(ve)}"
+        )
+        logger.error(error_message)
+        raise ValueError(error_message)
     return {
         'result': 'success'
     }

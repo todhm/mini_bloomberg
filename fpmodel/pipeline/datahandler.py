@@ -255,7 +255,8 @@ def save_pipeline_data(
     df['report_type'] = report_type
     if len(df) < 1:
         raise ValueError(
-            f"Failed to create machinelearning data {report_type}"
+            f"Failed to create machinelearning data {report_type} "
+            f"{market_date}"
         )
     schema = MachineLearningSaveSchema(many=True)
     try:

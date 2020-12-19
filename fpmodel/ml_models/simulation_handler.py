@@ -125,9 +125,21 @@ class SimulationHandler(object):
             loaded_model = pickle.load(f)
 
         try:
-            multi_index_df, groupby_data_list = self.prepare_simulation_df(
-                df=df,
-                loaded_model=loaded_model,
+            df_x = df[feature_list]
+            df['predicted_value'] = loaded_model.predict(df_x)
+            multi_index_df = df.set_index(['code', 'stock_date'])
+            multi_index_df['price_diff_percentage'] = (
+                (
+                    multi_index_df['predicted_value'] 
+                    - 
+                    multi_index_df['Close']
+                ) / multi_index_df['Close']
+            )
+            # 날짜별 price_diff_percentage가 가장 큰 주식리스트 가져오기
+            groupby_data_list = (
+                multi_index_df.groupby(level=1).agg(
+                    {'price_diff_percentage': self.aggregate_func} 
+                )
             )
         except Exception as e:
             raise ValueError(

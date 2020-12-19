@@ -85,7 +85,7 @@ class Portfolio(DynamicDocument):
 
 class Recommendations(DynamicDocument):
     meta = {
-        'collection': 'recommendations',
+        'collection': 'recommendation',
     }
     portfolio = ReferenceField(
         Portfolio, 
@@ -105,4 +105,3 @@ class Recommendations(DynamicDocument):
     )
     reg_date = DateTimeField(default=get_now_time, db_field="reg_date")
 
-    

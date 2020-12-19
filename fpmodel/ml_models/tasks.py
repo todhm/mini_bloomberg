@@ -113,7 +113,7 @@ def simulate_model_result(
     return result
 
 
-@celery_app.task(bind=True, name='save_recommendations')
+@celery_app.task(bind=True, name='save_recommendation')
 def save_recommendation(
     self, 
     db_name: str, 

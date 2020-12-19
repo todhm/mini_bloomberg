@@ -1,13 +1,21 @@
+from datetime import datetime, timedelta
+
 from airflow import DAG
+from airflow.models import Variable
 from airflow.operators.python_operator import PythonOperator
+from airflow.operators.dummy_operator import DummyOperator
+import pendulum
+
+from config import ProductionSettings
 from task_functions import handle_dart_jobs, create_feature_tasks
 from task_functions.market_data_tasks import (
     create_market_data_tasks,
     prepare_recent_market_tasks
 )
-from datetime import datetime, timedelta
-from config import ProductionSettings
-import pendulum
+from task_functions.create_recommendation_tasks import (
+    create_recommendation
+)
+
 
 local_tz = pendulum.timezone("Asia/Seoul")
 thisYear = datetime.now().year - 1
@@ -29,7 +37,7 @@ default_args = {
 }
 
 dag = DAG(
-    'recent_dart_dag', 
+    'make_daily_recommendations', 
     default_args=default_args, 
     schedule_interval=None, 
     concurrency=15, 
@@ -48,7 +56,7 @@ company_prepare_tasks = PythonOperator(
     },
 )
 
-total_number = 2
+total_number = 10
 save_report_job_list = []
 for i in range(total_number):
     save_report_links = PythonOperator(
@@ -112,17 +120,48 @@ for i in range(total_number):
     save_market_jobs.set_upstream(market_prepare_job)
     market_job_list.append(save_market_jobs)
 
-feature_tasks = PythonOperator(
-    task_id=f'create_ml_features_{i}',
-    python_callable=create_feature_tasks.create_machine_learning_features,
+dummy_job = DummyOperator(
+    task_id='dummyjobfirst',
     dag=dag,
-    depends_on_past=False,
-    provide_context=True,
-    op_kwargs={
-        'start_idx': i,
-        'total_task_count': total_number,
-        'db_name': ProductionSettings.MONGODB_NAME
-    },
 )
-for mj in market_job_list:
-    feature_tasks.set_upstream(mj)
+for market_job in market_job_list:
+    dummy_job.set_upstream(market_job)
+
+feature_task_list = []
+for i in range(3):
+    feature_tasks = PythonOperator(
+        task_id=f'create_ml_features_{i}',
+        python_callable=create_feature_tasks.create_machine_learning_features,
+        dag=dag,
+        depends_on_past=False,
+        provide_context=True,
+        op_kwargs={
+            'start_idx': i,
+            'total_task_count': total_number,
+            'db_name': ProductionSettings.MONGODB_NAME,
+            'use_current_date': True
+        },
+    )
+    feature_tasks.set_upstream(dummy_job)
+    feature_task_list.append(feature_tasks)
+
+second_dummy_job = DummyOperator(
+    task_id='second_dummy_tasks',
+    dag=dag,
+)
+for ft in feature_task_list:
+    second_dummy_job.set_upstream(ft)
+
+portfolio_id = Variable.get('portfolio_id')
+recommend_jobs = PythonOperator(
+        task_id='create_recommendations',
+        python_callable=create_recommendation,
+        dag=dag,
+        depends_on_past=False,
+        provide_context=True,
+        op_kwargs={
+            'portfolio_id': portfolio_id,
+            'db_name': ProductionSettings.MONGODB_NAME,
+        },
+    )
+recommend_jobs.set_upstream(second_dummy_job)
